@@ -1,0 +1,8 @@
+{
+  "display": "standalone",
+  "lang": "en",
+  "name": "sumi",
+  "short_name": "sumi",
+  "start_url": "/?utm_source=web_app_manifest",
+  "orientation": "portrait"
+}
