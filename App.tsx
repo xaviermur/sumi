@@ -3,7 +3,6 @@ import { View, Text, Button } from "react-native";
 import { useSpeechRecognition } from "./src/hooks/useSpeechRecognition";
 import { parseSpanishNumber } from "./src/utils/parseSpanishNumber";
 
-// --- Generador de operaciones ---
 function randomOperation() {
   const a = Math.floor(Math.random() * 10);
   const b = Math.floor(Math.random() * 10);
@@ -11,34 +10,33 @@ function randomOperation() {
   const op = ops[Math.floor(Math.random() * ops.length)];
   let x = a;
   let y = b;
-
   if (op === "-" && b > a) {
     x = b;
     y = a;
   }
-
   const result = op === "+" ? x + y : x - y;
   return { a: x, b: y, op, result };
 }
 
 export default function App() {
-  // --- Estados principales ---
   const [operation, setOperation] = useState(randomOperation());
   const [feedback, setFeedback] = useState<string | null>(null);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState("0:00");
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- Ref para operación actual ---
+  const [lastResult, setLastResult] = useState<
+    { a: number; b: number; op: string; expected: number; given: number; success: boolean } | null
+  >(null);
+
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const operationRef = useRef(operation);
   useEffect(() => {
     operationRef.current = operation;
   }, [operation]);
 
-  // --- Hook de reconocimiento de voz ---
-  const { listening, supported, startListening, stopListening } =
+  const { listening, supported, micState, startListening, stopListening } =
     useSpeechRecognition((text) => {
       const cleaned = text.replace(/^resultado\s*/, "").trim();
       const spokenNumber = parseSpanishNumber(cleaned);
@@ -49,18 +47,30 @@ export default function App() {
         return;
       }
 
-      if (spokenNumber === expected) {
+      const success = spokenNumber === expected;
+
+      if (success) {
         setFeedback("✅ ¡Correcto!");
         setCorrect((c) => c + 1);
       } else {
-        setFeedback(`❌ Incorrecto (${spokenNumber} ≠ ${expected})`);
+        setFeedback(`❌ Incorrecto`);
         setWrong((w) => w + 1);
       }
+
+      // siempre guardamos el resultado (acierto o error)
+      setLastResult({
+        a: operationRef.current.a,
+        b: operationRef.current.b,
+        op: operationRef.current.op,
+        expected,
+        given: spokenNumber,
+        success,
+      });
 
       setOperation(randomOperation());
     });
 
-  // --- Cronómetro ---
+  // Cronómetro
   useEffect(() => {
     if (listening) {
       if (!startTime) setStartTime(new Date());
@@ -80,7 +90,6 @@ export default function App() {
     };
   }, [listening, startTime]);
 
-  // --- Reiniciar todo ---
   const handleReset = () => {
     stopListening();
     setCorrect(0);
@@ -89,9 +98,10 @@ export default function App() {
     setStartTime(null);
     setElapsed("0:00");
     setOperation(randomOperation());
+    setLastResult(null);
   };
 
-  // --- Preparar operación en columna ---
+  // Preparar números actuales
   const aStr = operation.a.toString();
   const bStr = operation.b.toString();
   const maxLen = Math.max(aStr.length, bStr.length);
@@ -102,7 +112,7 @@ export default function App() {
     <View
       style={{
         flex: 1,
-        flexDirection: window.innerWidth < 600 ? "column" : "row",
+        flexDirection: "row",
         backgroundColor: "#f2f2f2",
         padding: 20,
       }}
@@ -150,13 +160,44 @@ export default function App() {
           backgroundColor: "#fff",
           borderRadius: 12,
           padding: 20,
-          alignItems: "center",
-          justifyContent: "center",
           shadowColor: "#000",
           shadowOpacity: 0.1,
           shadowRadius: 4,
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
         }}
       >
+        {/* 🔊 Estado del micrófono */}
+        {micState !== "idle" && (
+          <View
+            style={{
+              position: "absolute",
+              top: 10,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "600",
+                color:
+                  micState === "waiting"
+                    ? "green"
+                    : micState === "listening"
+                      ? "#e6b800"
+                      : "#e67e22",
+              }}
+            >
+              {micState === "waiting"
+                ? "🎤 Esperando..."
+                : micState === "listening"
+                  ? "🎧 Escuchando..."
+                  : "🧠 Procesando..."}
+            </Text>
+          </View>
+        )}
+        {/* 🔢 Operación principal */}
         <View style={{ alignItems: "flex-end" }}>
           <Text
             style={{
@@ -188,10 +229,12 @@ export default function App() {
           />
         </View>
 
+        {/* 💬 Feedback principal */}
         {feedback && (
           <Text
             style={{
-              marginTop: 30,
+              position: "absolute",
+              bottom: 30,
               fontSize: 32,
               color: feedback.startsWith("✅") ? "green" : "red",
               fontWeight: "600",
@@ -199,6 +242,58 @@ export default function App() {
           >
             {feedback}
           </Text>
+        )}
+
+        {/* 🧩 Mini panel de resultado (acierto o error) */}
+        {lastResult && (
+          <View
+            style={{
+              position: "absolute",
+              right: 20,
+              top: "50%",
+              transform: [{ translateY: -60 }],
+              backgroundColor: lastResult.success ? "#f0fff0" : "#fffaf0",
+              borderColor: lastResult.success ? "#0a0" : "#f99",
+              borderWidth: 1,
+              borderRadius: 8,
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              alignItems: "flex-end",
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 3,
+            }}
+          >
+            {/* Operación alineada en columna */}
+            <Text style={{ fontSize: 20, fontFamily: "monospace" }}>
+              {`${lastResult.a}`.padStart(4, " ")}
+            </Text>
+            <Text style={{ fontSize: 20, fontFamily: "monospace" }}>
+              {`${lastResult.op} ${String(lastResult.b).padStart(3, " ")}`}
+            </Text>
+            <View
+              style={{
+                width: "100%",
+                borderBottomColor: lastResult.success ? "#0a0" : "#f99",
+                borderBottomWidth: 2,
+                marginTop: 2,
+              }}
+            />
+            <Text
+              style={{
+                fontSize: 18,
+                color: lastResult.success ? "green" : "#c00",
+                marginTop: 2,
+              }}
+            >
+              {lastResult.success ? `✅ ${lastResult.given}` : `❌ ${lastResult.given}`}
+            </Text>
+            {!lastResult.success && (
+              <Text style={{ fontSize: 16, color: "#555" }}>
+                ✅ {lastResult.expected}
+              </Text>
+            )}
+          </View>
         )}
       </View>
     </View>

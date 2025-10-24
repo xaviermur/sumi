@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 
+type MicState = "idle" | "waiting" | "listening" | "processing";
+
 export function useSpeechRecognition(onCommand: (text: string) => void) {
-  const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [micState, setMicState] = useState<MicState>("idle");
   const recognitionRef = useRef<any>(null);
-  const readyRef = useRef(true); // evita start durante apagado
+  const keepAliveRef = useRef(false); // 🔁 Mantener vivo mientras micro activo
 
   const createRecognition = () => {
     const SR =
@@ -13,8 +15,23 @@ export function useSpeechRecognition(onCommand: (text: string) => void) {
 
     const recognition = new SR();
     recognition.lang = "es-ES";
-    recognition.continuous = true;
+    recognition.continuous = false; // usamos sesiones cortas + reinicio manual
     recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      console.info("🎤 Micro activo (esperando voz)");
+      setMicState("waiting");
+    };
+
+    recognition.onspeechstart = () => {
+      console.info("🎧 Escuchando...");
+      setMicState("listening");
+    };
+
+    recognition.onspeechend = () => {
+      console.info("🧠 Procesando...");
+      setMicState("processing");
+    };
 
     recognition.onresult = (event: any) => {
       const transcript = event.results[event.results.length - 1][0].transcript
@@ -28,30 +45,32 @@ export function useSpeechRecognition(onCommand: (text: string) => void) {
       } else {
         console.log("⏭️ Ignorado:", transcript);
       }
-    };
 
-    recognition.onstart = () => {
-      console.info("🎙️ Reconocimiento iniciado");
-      readyRef.current = true;
-      setListening(true);
+      // después de procesar, volvemos a "waiting"
+      setMicState("waiting");
     };
 
     recognition.onerror = (e: any) => {
-      if (e.error === "aborted") {
-        console.info("ℹ️ Abortado (sin error)");
-        return;
-      }
+      if (e.error === "aborted") return; // no pasa nada
       console.error("⚠️ Error VR:", e.error);
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        alert("No se puede acceder al micrófono. Revisa los permisos del navegador.");
-      }
-      setListening(false);
+      setMicState("waiting");
     };
 
     recognition.onend = () => {
-      console.info("🛑 Reconocimiento detenido");
-      setListening(false);
-      readyRef.current = true;
+      console.info("🛑 Reconocimiento finalizado");
+      // 👇 Reiniciamos automáticamente si el micro sigue activo
+      if (keepAliveRef.current) {
+        console.log("♻️ Reiniciando sesión...");
+        setTimeout(() => {
+          try {
+            recognitionRef.current?.start?.();
+          } catch (err) {
+            console.warn("⚠️ Error reiniciando reconocimiento:", err);
+          }
+        }, 400);
+      } else {
+        setMicState("idle");
+      }
     };
 
     return recognition;
@@ -66,10 +85,8 @@ export function useSpeechRecognition(onCommand: (text: string) => void) {
       setSupported(false);
       return;
     }
-
-    recognitionRef.current = createRecognition();
     setSupported(true);
-
+    recognitionRef.current = createRecognition();
     return () => {
       recognitionRef.current?.abort?.();
       recognitionRef.current = null;
@@ -78,34 +95,29 @@ export function useSpeechRecognition(onCommand: (text: string) => void) {
 
   const startListening = () => {
     if (!supported) return;
-    if (!readyRef.current) {
-      console.warn("⚠️ Esperando fin de sesión anterior...");
-      return;
+    keepAliveRef.current = true;
+    if (!recognitionRef.current) {
+      recognitionRef.current = createRecognition();
     }
 
     try {
-      if (!recognitionRef.current) {
-        recognitionRef.current = createRecognition();
-      }
-      readyRef.current = false;
-      // 🔸 pequeño retraso por seguridad
-      setTimeout(() => {
-        recognitionRef.current?.start?.();
-      }, 300);
+      recognitionRef.current.start();
     } catch (err) {
       console.error("⚠️ Error al iniciar:", err);
     }
   };
 
   const stopListening = () => {
-    if (!recognitionRef.current) return;
-    readyRef.current = false;
+    keepAliveRef.current = false;
     try {
-      recognitionRef.current.stop();
+      recognitionRef.current?.stop?.();
     } catch (err) {
       console.warn("⚠️ Error al detener:", err);
     }
+    setMicState("idle");
   };
 
-  return { listening, supported, startListening, stopListening };
+  const listening = micState !== "idle";
+
+  return { supported, micState, listening, startListening, stopListening };
 }
