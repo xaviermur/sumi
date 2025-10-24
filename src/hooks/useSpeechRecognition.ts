@@ -1,91 +1,47 @@
 import { useState, useRef, useEffect } from "react";
 
-/**
- * Hook de reconocimiento de voz robusto y compatible.
- * - Crea SpeechRecognition solo en el navegador real (no SSR ni prerender)
- * - Evita crash por ejecución temprana
- * - Detecta soporte real de la API
- */
-export function useSpeechRecognition(onResult: (text: string) => void) {
+export function useSpeechRecognition(onCommand: (text: string) => void) {
   const [listening, setListening] = useState(false);
   const [supported, setSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const readyRef = useRef(true); // evita start durante apagado
 
-  useEffect(() => {
-    // Evitar ejecución en SSR o entornos sin window
-    if (typeof window === "undefined") return;
-
+  const createRecognition = () => {
     const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return null;
 
-    if (!SR) {
-      console.warn("❌ SpeechRecognition API no soportada.");
-      setSupported(false);
-      return;
-    }
+    const recognition = new SR();
+    recognition.lang = "es-ES";
+    recognition.continuous = true;
+    recognition.interimResults = false;
 
-    try {
-      recognitionRef.current = new SR();
-      recognitionRef.current.lang = "es-ES";
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      setSupported(true);
-      console.info("✅ SpeechRecognition inicializado correctamente");
-    } catch (err) {
-      console.error("⚠️ Error al crear SpeechRecognition:", err);
-      setSupported(false);
-    }
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[event.results.length - 1][0].transcript
+        .toLowerCase()
+        .trim();
+      console.log("🗣️ Texto detectado:", transcript);
 
-    return () => {
-      // limpieza al desmontar
-      if (recognitionRef.current) {
-        recognitionRef.current.abort?.();
-        recognitionRef.current = null;
+      if (transcript.startsWith("resultado")) {
+        console.log("✅ Comando válido:", transcript);
+        onCommand(transcript);
+      } else {
+        console.log("⏭️ Ignorado:", transcript);
       }
     };
-  }, []);
-
-  const startListening = () => {
-    if (!recognitionRef.current) {
-      console.warn("SpeechRecognition no inicializado o no soportado");
-      return;
-    }
-
-    const recognition = recognitionRef.current;
-    let gotResult = false;
-    let timeoutHandle: any;
 
     recognition.onstart = () => {
       console.info("🎙️ Reconocimiento iniciado");
+      readyRef.current = true;
       setListening(true);
-      gotResult = false;
-    };
-
-    recognition.onspeechstart = () => console.info("🎤 Se detectó voz");
-    recognition.onspeechend = () => {
-      console.info("🔇 Fin de voz detectada (esperando resultado)");
-      timeoutHandle = setTimeout(() => {
-        if (!gotResult) {
-          console.warn("⚠️ No se recibió resultado, reiniciando...");
-          recognition.stop();
-          startListening();
-        }
-      }, 800);
-    };
-
-    recognition.onresult = (event: any) => {
-      gotResult = true;
-      clearTimeout(timeoutHandle);
-      const text = event.results[0][0].transcript.toLowerCase();
-      console.info("✅ Texto reconocido:", text);
-      onResult(text);
-      recognition.stop();
     };
 
     recognition.onerror = (e: any) => {
-      clearTimeout(timeoutHandle);
-      console.error("⚠️ Error de reconocimiento:", e.error);
+      if (e.error === "aborted") {
+        console.info("ℹ️ Abortado (sin error)");
+        return;
+      }
+      console.error("⚠️ Error VR:", e.error);
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         alert("No se puede acceder al micrófono. Revisa los permisos del navegador.");
       }
@@ -93,24 +49,62 @@ export function useSpeechRecognition(onResult: (text: string) => void) {
     };
 
     recognition.onend = () => {
-      clearTimeout(timeoutHandle);
-      console.info("🛑 Reconocimiento finalizado");
+      console.info("🛑 Reconocimiento detenido");
       setListening(false);
+      readyRef.current = true;
     };
 
+    return recognition;
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const SR =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      console.warn("❌ SpeechRecognition no soportado.");
+      setSupported(false);
+      return;
+    }
+
+    recognitionRef.current = createRecognition();
+    setSupported(true);
+
+    return () => {
+      recognitionRef.current?.abort?.();
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  const startListening = () => {
+    if (!supported) return;
+    if (!readyRef.current) {
+      console.warn("⚠️ Esperando fin de sesión anterior...");
+      return;
+    }
+
     try {
-      recognition.start();
+      if (!recognitionRef.current) {
+        recognitionRef.current = createRecognition();
+      }
+      readyRef.current = false;
+      // 🔸 pequeño retraso por seguridad
+      setTimeout(() => {
+        recognitionRef.current?.start?.();
+      }, 300);
     } catch (err) {
-      console.error("⚠️ Error al iniciar reconocimiento:", err);
+      console.error("⚠️ Error al iniciar:", err);
     }
   };
 
   const stopListening = () => {
     if (!recognitionRef.current) return;
+    readyRef.current = false;
     try {
       recognitionRef.current.stop();
-    } catch {}
-    setListening(false);
+    } catch (err) {
+      console.warn("⚠️ Error al detener:", err);
+    }
   };
 
   return { listening, supported, startListening, stopListening };
