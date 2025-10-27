@@ -13,29 +13,25 @@ type LeftPanelProps = {
   onReset: () => void;
   onExit: () => void;
 
-  // 🔹 Props opcionales para los distintos modos
   mode?: "free" | "timed" | "levels" | "timeattack";
   level?: LevelConfig;
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
+
+  // 👇 nuevos
+  phase?: "ready" | "running" | "finished";
+  onStartGame?: () => void;
+  autoStartLabel?: string; // opcional, por si quieres personalizar el texto
 };
 
-export default function LeftPanel({
-  listening,
-  supported,
-  startListening,
-  stopListening,
-  correct,
-  wrong,
-  elapsed,
-  onReset,
-  onExit,
-  mode = "timed",
-  level,
-  onIncreaseLevel,
-  onDecreaseLevel,
-}: LeftPanelProps) {
-  // Detectar si es contrarreloj y quedan menos de 10 segundos
+export default function LeftPanel({...props}: LeftPanelProps) {
+  const {
+    listening, supported, startListening, stopListening,
+    correct, wrong, elapsed, onReset, onExit,
+    mode = "timed", level, onIncreaseLevel, onDecreaseLevel,
+    phase = "running", onStartGame, autoStartLabel,
+  } = props;
+
   const remainingSeconds =
     mode === "timeattack" ? parseInt(elapsed.replace(/\D/g, "")) || 0 : null;
   const timeColor =
@@ -67,57 +63,31 @@ export default function LeftPanel({
         <Button
           title={listening ? "🔇 Apagar micro" : "🎤 Encender micro"}
           onPress={() => (listening ? stopListening() : startListening())}
-          disabled={!supported}
+          disabled={!supported || phase === "finished"} // opcional deshabilitar en resumen final
         />
       </View>
 
-      {/* 📊 INFORMACIÓN */}
+      {/* 📊 INFO */}
       <View style={{ marginTop: 30 }}>
         <Text style={{ fontSize: 20 }}>✅ Aciertos: {correct}</Text>
         <Text style={{ fontSize: 20, marginTop: 4 }}>❌ Errores: {wrong}</Text>
-        <Text
-          style={{
-            fontSize: 20,
-            marginTop: 4,
-            color: timeColor,
-            fontWeight: mode === "timeattack" ? "700" : "normal",
-          }}
-        >
+        <Text style={{ fontSize: 20, marginTop: 4, color: timeColor, fontWeight: mode === "timeattack" ? "700" : "normal" }}>
           ⏱️ Tiempo: {elapsed}
         </Text>
 
-        {/* 🔹 Mostrar controles de nivel si procede */}
         {showLevelControls && level && (
           <View style={{ marginTop: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 6 }}>
               ⚙️ Dificultad
             </Text>
-            <Text
-              style={{
-                fontSize: 16,
-                fontWeight: "500",
-                color: level.color,
-              }}
-            >
+            <Text style={{ fontSize: 16, fontWeight: "500", color: level.color }}>
               {level.name}
             </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                color: "#666",
-                marginTop: 2,
-              }}
-            >
+            <Text style={{ fontSize: 14, color: "#666", marginTop: 2 }}>
               {level.description}
             </Text>
 
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginTop: 10,
-              }}
-            >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
               <Button title="⬇️ Nivel -" onPress={onDecreaseLevel} />
               <Button title="⬆️ Nivel +" onPress={onIncreaseLevel} />
             </View>
@@ -127,10 +97,18 @@ export default function LeftPanel({
 
       {/* 🔁 ACCIONES */}
       <View>
+        {/* 👇 Solo en pre-partida */}
+        {phase === "ready" && onStartGame && (
+          <>
+            <Button
+              title={autoStartLabel ?? "▶ Iniciar juego"}
+              onPress={onStartGame}
+            />
+            <View style={{ height: 10 }} />
+          </>
+        )}
         <Button
-          title={
-            mode === "timeattack" ? "🔁 Reiniciar ronda" : "🔁 Empezar de nuevo"
-          }
+          title={mode === "timeattack" ? "🔁 Reiniciar ronda" : "🔁 Empezar de nuevo"}
           onPress={onReset}
         />
         <View style={{ height: 10 }} />

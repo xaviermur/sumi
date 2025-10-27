@@ -1,3 +1,4 @@
+// TimeAttackGameScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
 import { View, Text, Button } from "react-native";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
@@ -6,6 +7,9 @@ import { generateOperation } from "../core/logic/generateOperation";
 import { LEVELS } from "../core/logic/levels";
 import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
+import SummaryPanel from "../components/SummaryPanel";
+
+const ROUND_SECONDS = 60;
 
 export default function TimeAttackGameScreen({ onExit }: { onExit: () => void }) {
   const [levelIndex, setLevelIndex] = useState(0);
@@ -15,19 +19,14 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
   const [feedback, setFeedback] = useState<string | null>(null);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [finished, setFinished] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
   const [lastResult, setLastResult] = useState<any>(null);
+  const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const operationRef = useRef(operation);
+  useEffect(() => { operationRef.current = operation; }, [operation]);
 
-  // mantener referencia actualizada
-  useEffect(() => {
-    operationRef.current = operation;
-  }, [operation]);
-
-  // 🎙️ reconocimiento de voz
   const { listening, supported, micState, startListening, stopListening } =
     useSpeechRecognition((text) => {
       const cleaned = text.replace(/^resultado\s*/, "").trim();
@@ -40,50 +39,48 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
       }
 
       const success = spokenNumber === result;
-
       setFeedback(success ? "✅ ¡Correcto!" : "❌ Incorrecto");
       setCorrect((c) => c + (success ? 1 : 0));
       setWrong((w) => w + (success ? 0 : 1));
-
-      setLastResult({
-        ...operationRef.current,
-        given: spokenNumber,
-        success,
-      });
-
-      // nueva operación
+      setLastResult({ ...operationRef.current, given: spokenNumber, success });
       setOperation(generateOperation(LEVELS[levelIndex].options));
     });
 
-  // ⏱️ cuenta regresiva 60 → 0
+  // ⏱️ cuenta regresiva SOLO en running
   useEffect(() => {
+    if (phase !== "running") {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
           stopListening();
-          setFinished(true);
+          setPhase("finished");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(timerRef.current!);
-  }, []);
 
-  // 🔁 reiniciar (opcional)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [phase, stopListening]);
+
   const handleReset = () => {
     stopListening();
     setCorrect(0);
     setWrong(0);
     setFeedback(null);
-    setTimeLeft(60);
-    setFinished(false);
+    setTimeLeft(ROUND_SECONDS);
     setOperation(generateOperation(LEVELS[levelIndex].options));
     setLastResult(null);
+    setPhase("ready");
   };
 
-  // ⬆️⬇️ cambiar nivel
   const increaseLevel = () => {
     setLevelIndex((prev) => {
       const next = Math.min(prev + 1, LEVELS.length - 1);
@@ -91,7 +88,6 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
       return next;
     });
   };
-
   const decreaseLevel = () => {
     setLevelIndex((prev) => {
       const next = Math.max(prev - 1, 0);
@@ -100,37 +96,13 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
     });
   };
 
-  // 🏁 resumen final
-  if (finished) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#f2f2f2",
-        }}
-      >
-        <Text style={{ fontSize: 28, marginBottom: 20 }}>⏱️ ¡Tiempo terminado!</Text>
-        <Text style={{ fontSize: 18 }}>✅ Aciertos: {correct}</Text>
-        <Text style={{ fontSize: 18 }}>❌ Errores: {wrong}</Text>
-        <View style={{ marginTop: 20 }}>
-          <Button title="Jugar otra vez" onPress={handleReset} />
-          <Button title="Volver al menú" onPress={onExit} />
-        </View>
-      </View>
-    );
-  }
+  const handleStartGame = () => {
+    setPhase("running");
+    if (!listening) startListening(); // auto-encender micro al iniciar
+  };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        flexDirection: "row",
-        backgroundColor: "#f2f2f2",
-        padding: 20,
-      }}
-    >
+    <View style={{ flex: 1, flexDirection: "row", backgroundColor: "#f2f2f2", padding: 20 }}>
       <LeftPanel
         listening={listening}
         supported={supported}
@@ -141,19 +113,34 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
         elapsed={`${timeLeft}s`}
         onReset={handleReset}
         onExit={onExit}
-        // 🔹 props específicas del modo contrarreloj
         mode="timeattack"
         level={LEVELS[levelIndex]}
         onIncreaseLevel={increaseLevel}
         onDecreaseLevel={decreaseLevel}
+        phase={phase}
+        onStartGame={handleStartGame}
+        autoStartLabel="▶ Iniciar (activa micro)"
       />
 
-      <RightPanel
-        operation={operation}
-        micState={micState}
-        feedback={feedback}
-        lastResult={lastResult}
-      />
+      {phase === "running" && (
+        <RightPanel
+          operation={operation}
+          micState={micState}
+          feedback={feedback}
+          lastResult={lastResult}
+        />
+      )}
+
+      {phase === "finished" && (
+        <SummaryPanel
+          title="⏱️ ¡Tiempo terminado!"
+          correct={correct}
+          wrong={wrong}
+          durationSeconds={ROUND_SECONDS}
+          onRetry={handleReset}
+          onExit={onExit}
+        />
+      )}
     </View>
   );
 }
