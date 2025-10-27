@@ -1,6 +1,6 @@
-// TimeAttackGameScreen.tsx
+// src/screens/TimeAttackGameScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
-import { View, Text, Button } from "react-native";
+import { View } from "react-native";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { parseSpanishNumber } from "../utils/parseSpanishNumber";
 import { generateOperation } from "../core/logic/generateOperation";
@@ -13,10 +13,16 @@ const ROUND_SECONDS = 60;
 
 export default function TimeAttackGameScreen({ onExit }: { onExit: () => void }) {
   const [levelIndex, setLevelIndex] = useState(0);
+  const levelIndexRef = useRef(levelIndex);
+  useEffect(() => {
+    levelIndexRef.current = levelIndex;
+  }, [levelIndex]);
+
   const [operation, setOperation] = useState(
     generateOperation(LEVELS[levelIndex].options)
   );
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackId, setFeedbackId] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
@@ -25,7 +31,10 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const operationRef = useRef(operation);
-  useEffect(() => { operationRef.current = operation; }, [operation]);
+
+  useEffect(() => {
+    operationRef.current = operation;
+  }, [operation]);
 
   const { listening, supported, micState, startListening, stopListening } =
     useSpeechRecognition((text) => {
@@ -40,10 +49,18 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
 
       const success = spokenNumber === result;
       setFeedback(success ? "✅ ¡Correcto!" : "❌ Incorrecto");
+      setFeedbackId((id) => id + 1); // 👈 esto fuerza animación cada vez      
       setCorrect((c) => c + (success ? 1 : 0));
       setWrong((w) => w + (success ? 0 : 1));
-      setLastResult({ ...operationRef.current, given: spokenNumber, success });
-      setOperation(generateOperation(LEVELS[levelIndex].options));
+
+      setLastResult({
+        ...operationRef.current,
+        given: spokenNumber,
+        success,
+      });
+
+      // ✅ usar el nivel actual desde la referencia
+      setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
     });
 
   // ⏱️ cuenta regresiva SOLO en running
@@ -76,7 +93,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
     setWrong(0);
     setFeedback(null);
     setTimeLeft(ROUND_SECONDS);
-    setOperation(generateOperation(LEVELS[levelIndex].options));
+    setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
     setLastResult(null);
     setPhase("ready");
   };
@@ -88,6 +105,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
       return next;
     });
   };
+
   const decreaseLevel = () => {
     setLevelIndex((prev) => {
       const next = Math.max(prev - 1, 0);
@@ -102,7 +120,14 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
   };
 
   return (
-    <View style={{ flex: 1, flexDirection: "row", backgroundColor: "#f2f2f2", padding: 20 }}>
+    <View
+      style={{
+        flex: 1,
+        flexDirection: "row",
+        backgroundColor: "#f2f2f2",
+        padding: 20,
+      }}
+    >
       <LeftPanel
         listening={listening}
         supported={supported}
@@ -110,7 +135,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
         stopListening={stopListening}
         correct={correct}
         wrong={wrong}
-        elapsed={`${timeLeft}s`}
+        elapsed={`${timeLeft}s`} // en ready mostramos "60s"
         onReset={handleReset}
         onExit={onExit}
         mode="timeattack"
@@ -127,6 +152,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
           operation={operation}
           micState={micState}
           feedback={feedback}
+          feedbackId={feedbackId}
           lastResult={lastResult}
         />
       )}

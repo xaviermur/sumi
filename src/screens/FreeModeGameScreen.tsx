@@ -1,4 +1,4 @@
-// FreeModeGameScreen.tsx
+// src/screens/FreeModeGameScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
 import { View } from "react-native";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
@@ -14,25 +14,32 @@ export default function FreeModeGameScreen({
   duration,
 }: {
   onExit: () => void;
-  duration?: number; // si lo pasas, contamos hacia abajo; si no, hacia arriba
+  duration?: number;
 }) {
   const [levelIndex, setLevelIndex] = useState(0);
+  const levelIndexRef = useRef(levelIndex);
+  useEffect(() => {
+    levelIndexRef.current = levelIndex;
+  }, [levelIndex]);
+
   const [operation, setOperation] = useState(
     generateOperation(LEVELS[levelIndex].options)
   );
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackId, setFeedbackId] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(duration ? formatSec(duration) : "0:00");
   const [lastResult, setLastResult] = useState<any>(null);
-
   const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const operationRef = useRef(operation);
 
-  useEffect(() => { operationRef.current = operation; }, [operation]);
+  useEffect(() => {
+    operationRef.current = operation;
+  }, [operation]);
 
   const { listening, supported, micState, startListening, stopListening } =
     useSpeechRecognition((text) => {
@@ -47,13 +54,20 @@ export default function FreeModeGameScreen({
 
       const success = spokenNumber === result;
       setFeedback(success ? "✅ ¡Correcto!" : "❌ Incorrecto");
+      setFeedbackId((id) => id + 1); // 👈 esto fuerza animación cada vez      
       setCorrect((c) => c + (success ? 1 : 0));
       setWrong((w) => w + (success ? 0 : 1));
-      setLastResult({ ...operationRef.current, given: spokenNumber, success });
-      setOperation(generateOperation(LEVELS[levelIndex].options));
+      setLastResult({
+        ...operationRef.current,
+        given: spokenNumber,
+        success,
+      });
+
+      // ✅ usar siempre el nivel actual actualizado
+      setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
     });
 
-  // ⏱️ Cronómetro: SOLO corre en phase === "running"
+  // ⏱️ Cronómetro (solo activo cuando running)
   useEffect(() => {
     if (phase !== "running") {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -93,12 +107,11 @@ export default function FreeModeGameScreen({
     setFeedback(null);
     setStartTime(null);
     setElapsed(duration ? formatSec(duration) : "0:00");
-    setOperation(generateOperation(LEVELS[levelIndex].options));
+    setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
     setLastResult(null);
     setPhase("ready");
   };
 
-  // cambiar nivel en pre-partida o en marcha
   const increaseLevel = () => {
     setLevelIndex((prev) => {
       const next = Math.min(prev + 1, LEVELS.length - 1);
@@ -106,6 +119,7 @@ export default function FreeModeGameScreen({
       return next;
     });
   };
+
   const decreaseLevel = () => {
     setLevelIndex((prev) => {
       const next = Math.max(prev - 1, 0);
@@ -114,15 +128,21 @@ export default function FreeModeGameScreen({
     });
   };
 
-  // ▶ Iniciar juego: pasar a running y arrancar micro automáticamente
   const handleStartGame = () => {
     setPhase("running");
     setStartTime(new Date());
-    if (!listening) startListening();
+    if (!listening) startListening(); // autoencender micro
   };
 
   return (
-    <View style={{ flex: 1, flexDirection: "row", backgroundColor: "#f2f2f2", padding: 20 }}>
+    <View
+      style={{
+        flex: 1,
+        flexDirection: "row",
+        backgroundColor: "#f2f2f2",
+        padding: 20,
+      }}
+    >
       <LeftPanel
         listening={listening}
         supported={supported}
@@ -142,12 +162,12 @@ export default function FreeModeGameScreen({
         autoStartLabel="▶ Iniciar (activa micro)"
       />
 
-      {/* ready -> nada */}
       {phase === "running" && (
         <RightPanel
           operation={operation}
           micState={micState}
           feedback={feedback}
+          feedbackId={feedbackId}
           lastResult={lastResult}
         />
       )}
@@ -157,7 +177,6 @@ export default function FreeModeGameScreen({
           title="⏹️ Fin de la ronda"
           correct={correct}
           wrong={wrong}
-          // si duration está definido, mostramos esa duración total
           durationSeconds={typeof duration === "number" ? duration : undefined}
           onRetry={handleReset}
           onExit={onExit}

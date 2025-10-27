@@ -19,7 +19,6 @@
       "expo-asset"
     ],
     "web": {
-      "bundler": "webpack",
       "babel": { "useHermes": false }
     }    
   }
