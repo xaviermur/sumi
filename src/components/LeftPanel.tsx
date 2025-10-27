@@ -13,8 +13,8 @@ type LeftPanelProps = {
   onReset: () => void;
   onExit: () => void;
 
-  // 🔹 Nuevos props opcionales para modo libre
-  mode?: "free" | "timed" | "levels";
+  // 🔹 Props opcionales para los distintos modos
+  mode?: "free" | "timed" | "levels" | "timeattack";
   level?: LevelConfig;
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
@@ -35,6 +35,16 @@ export default function LeftPanel({
   onIncreaseLevel,
   onDecreaseLevel,
 }: LeftPanelProps) {
+  // Detectar si es contrarreloj y quedan menos de 10 segundos
+  const remainingSeconds =
+    mode === "timeattack" ? parseInt(elapsed.replace(/\D/g, "")) || 0 : null;
+  const timeColor =
+    mode === "timeattack" && remainingSeconds !== null && remainingSeconds <= 10
+      ? "red"
+      : "#000";
+
+  const showLevelControls = mode === "free" || mode === "timeattack";
+
   return (
     <View
       style={{
@@ -65,10 +75,19 @@ export default function LeftPanel({
       <View style={{ marginTop: 30 }}>
         <Text style={{ fontSize: 20 }}>✅ Aciertos: {correct}</Text>
         <Text style={{ fontSize: 20, marginTop: 4 }}>❌ Errores: {wrong}</Text>
-        <Text style={{ fontSize: 20, marginTop: 4 }}>⏱️ Tiempo: {elapsed}</Text>
+        <Text
+          style={{
+            fontSize: 20,
+            marginTop: 4,
+            color: timeColor,
+            fontWeight: mode === "timeattack" ? "700" : "normal",
+          }}
+        >
+          ⏱️ Tiempo: {elapsed}
+        </Text>
 
-        {/* 🔹 Solo mostrar si estamos en modo libre */}
-        {mode === "free" && level && (
+        {/* 🔹 Mostrar controles de nivel si procede */}
+        {showLevelControls && level && (
           <View style={{ marginTop: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 6 }}>
               ⚙️ Dificultad
@@ -108,7 +127,12 @@ export default function LeftPanel({
 
       {/* 🔁 ACCIONES */}
       <View>
-        <Button title="🔁 Empezar de nuevo" onPress={onReset} />
+        <Button
+          title={
+            mode === "timeattack" ? "🔁 Reiniciar ronda" : "🔁 Empezar de nuevo"
+          }
+          onPress={onReset}
+        />
         <View style={{ height: 10 }} />
         <Button title="🏠 Volver al menú" onPress={onExit} />
       </View>
