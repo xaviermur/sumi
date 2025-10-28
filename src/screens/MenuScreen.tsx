@@ -3,8 +3,10 @@ import { View, Text, Button, TouchableOpacity, Switch } from "react-native";
 
 export default function MenuScreen({
   onStartGame,
+  onShowRecords, // 🆕 nuevo prop
 }: {
   onStartGame: (options?: any) => void;
+  onShowRecords: () => void; // 🆕 callback
 }) {
   const [selectedMode, setSelectedMode] = useState<
     "free" | "timed" | "levels" | "custom" | null
@@ -67,7 +69,6 @@ export default function MenuScreen({
       return;
     }
 
-    // Modos normales
     onStartGame({
       mode: selectedMode,
       difficulty,
@@ -106,9 +107,9 @@ export default function MenuScreen({
           🎮 Modo de juego
         </Text>
         {[
-          { key: "free", label: "Modo libre (tiempo personalizado)" },
-          { key: "timed", label: "Contrarreloj (1 minuto)" },
-          { key: "custom", label: "Personalizado (configura tu modo)" },
+          { key: "free", label: "Modo libre (1 o 2 minutos)" },
+          { key: "timed", label: "Contrarreloj (1 minuto fijo)" },
+          { key: "custom", label: "Personalizado (elige tus reglas)" },
         ].map((opt) => (
           <TouchableOpacity
             key={opt.key}
@@ -133,7 +134,7 @@ export default function MenuScreen({
         ))}
       </View>
 
-      {/* ⚙️ Dificultad (no para modo custom) */}
+      {/* ⚙️ Dificultad */}
       {selectedMode !== "custom" && (
         <View
           style={{
@@ -158,8 +159,7 @@ export default function MenuScreen({
                 padding: 10,
                 borderRadius: 8,
                 marginBottom: 8,
-                backgroundColor:
-                  difficulty === n ? "#2196f3" : "#eee",
+                backgroundColor: difficulty === n ? "#2196f3" : "#eee",
               }}
             >
               <Text
@@ -175,7 +175,7 @@ export default function MenuScreen({
         </View>
       )}
 
-      {/* ⏱️ Duración (solo modo libre o custom) */}
+      {/* ⏱️ Duración (solo libre o custom) */}
       {(selectedMode === "free" || selectedMode === "custom") && (
         <View
           style={{
@@ -192,7 +192,7 @@ export default function MenuScreen({
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
             ⏱️ Duración
           </Text>
-          {[60, 120, 180, 300, 600].map((sec) => (
+          {[60, 120].map((sec) => (
             <TouchableOpacity
               key={sec}
               onPress={() => setDuration(sec)}
@@ -216,7 +216,7 @@ export default function MenuScreen({
         </View>
       )}
 
-      {/* 🔧 Configuración personalizada (solo si modo = custom) */}
+      {/* ⚙️ Configuración personalizada */}
       {selectedMode === "custom" && (
         <View
           style={{
@@ -291,11 +291,36 @@ export default function MenuScreen({
       )}
 
       {/* 🚀 Botón Comenzar */}
-      <Button
-        title="🚀 Comenzar"
+      <TouchableOpacity
         onPress={handleStart}
         disabled={!selectedMode}
-      />
+        style={{
+          backgroundColor: selectedMode ? "#4caf50" : "#aaa",
+          paddingVertical: 14,
+          paddingHorizontal: 40,
+          borderRadius: 10,
+          marginBottom: 12,
+        }}
+      >
+        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
+          🚀 Comenzar
+        </Text>
+      </TouchableOpacity>
+
+      {/* 🏆 Ver récords */}
+      <TouchableOpacity
+        onPress={onShowRecords}
+        style={{
+          backgroundColor: "#ff9800",
+          paddingVertical: 12,
+          paddingHorizontal: 40,
+          borderRadius: 10,
+        }}
+      >
+        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
+          🏆 Ver récords
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }

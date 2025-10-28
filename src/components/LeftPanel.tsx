@@ -1,7 +1,7 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Button } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 
-type LeftPanelProps = {
+interface LeftPanelProps {
   listening: boolean;
   supported: boolean;
   startListening: () => void;
@@ -11,16 +11,15 @@ type LeftPanelProps = {
   elapsed: string;
   onReset: () => void;
   onExit: () => void;
-
-  mode?: "free" | "timed" | "levels" | "timeattack" | "custom";
+  mode: "free" | "timeattack" | "custom";
   difficulty?: number;
+  phase: "ready" | "running" | "finished";
+  onStartGame: () => void;
+  autoStartLabel?: string;
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
-
-  phase?: "ready" | "running" | "finished";
-  onStartGame?: () => void;
-  autoStartLabel?: string;
-};
+  totalScore?: number; // 🆕 marcador de puntuación
+}
 
 export default function LeftPanel({
   listening,
@@ -32,197 +31,205 @@ export default function LeftPanel({
   elapsed,
   onReset,
   onExit,
-  mode = "timed",
-  difficulty = 1,
+  mode,
+  difficulty,
+  phase,
+  onStartGame,
+  autoStartLabel = "▶ Iniciar",
   onIncreaseLevel,
   onDecreaseLevel,
-  phase = "running",
-  onStartGame,
-  autoStartLabel,
+  totalScore = 0,
 }: LeftPanelProps) {
-  const remainingSeconds =
-    mode === "timeattack" ? parseInt(elapsed.replace(/\D/g, "")) || 0 : null;
-  const timeColor =
-    mode === "timeattack" && remainingSeconds !== null && remainingSeconds <= 10
-      ? "red"
-      : "#000";
-
-  const showDifficultyControls = mode === "free" || mode === "timeattack";
-
-  const difficultyLabels = [
-    { id: 1, name: "Muy fácil", color: "#A7F3D0" },
-    { id: 2, name: "Fácil", color: "#BFDBFE" },
-    { id: 3, name: "Media", color: "#FDE68A" },
-    { id: 4, name: "Difícil", color: "#FDBA74" },
-    { id: 5, name: "Experto", color: "#FCA5A5" },
-  ];
-  const current = difficultyLabels.find((d) => d.id === difficulty) ?? difficultyLabels[0];
+  const isRunning = phase === "running";
+  const isFinished = phase === "finished";
 
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: "#ffffff",
         borderRadius: 16,
         padding: 20,
-        marginRight: 10,
         justifyContent: "space-between",
         shadowColor: "#000",
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 6,
       }}
     >
-      {/* 🎙️ Micrófono */}
-      <View>
-        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>🎙️ Micrófono</Text>
-        <TouchableOpacity
-          onPress={() => (listening ? stopListening() : startListening())}
-          disabled={!supported || phase === "finished"}
-          style={{
-            backgroundColor: listening ? "#ef4444" : "#22c55e",
-            paddingVertical: 10,
-            borderRadius: 10,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
-            {listening ? "🔇 Apagar micro" : "🎤 Encender micro"}
+      {/* 🔹 Encabezado */}
+      <View style={{ alignItems: "center" }}>
+        <Text style={{ fontSize: 28, fontWeight: "700", color: "#333" }}>
+          {mode === "free"
+            ? "🆓 Modo libre"
+            : mode === "timeattack"
+            ? "⏱️ Contrarreloj"
+            : "⚙️ Modo personalizado"}
+        </Text>
+        {difficulty && (
+          <Text style={{ fontSize: 18, color: "#777", marginTop: 4 }}>
+            Dificultad: {difficulty}
           </Text>
-        </TouchableOpacity>
+        )}
       </View>
 
-      {/* 📊 Estadísticas */}
-      <View style={{ marginTop: 20 }}>
-        <Text style={{ fontSize: 20 }}>✅ Aciertos: {correct}</Text>
-        <Text style={{ fontSize: 20, marginTop: 6 }}>❌ Errores: {wrong}</Text>
+      {/* 🕒 Timer */}
+      <View
+        style={{
+          alignItems: "center",
+          marginTop: 10,
+          marginBottom: 10,
+        }}
+      >
         <Text
           style={{
-            fontSize: 20,
-            marginTop: 6,
-            color: timeColor,
-            fontWeight: "700",
+            fontSize: 54,
+            fontWeight: "800",
+            color: isFinished ? "#999" : "#222",
           }}
         >
-          ⏱️ Tiempo: {elapsed}
+          {elapsed}
+        </Text>
+        <Text style={{ fontSize: 16, color: "#777" }}>
+          {isRunning ? "Tiempo restante" : "Listo para comenzar"}
         </Text>
       </View>
 
-      {/* ⚙️ Dificultad */}
-      {showDifficultyControls && (
-        <View
+      {/* 📊 Marcadores */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-around",
+          alignItems: "center",
+          marginVertical: 10,
+        }}
+      >
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: 40, color: "#4caf50", fontWeight: "700" }}>
+            ✅ {correct}
+          </Text>
+          <Text style={{ fontSize: 16, color: "#555" }}>Correctas</Text>
+        </View>
+
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ fontSize: 40, color: "#f44336", fontWeight: "700" }}>
+            ❌ {wrong}
+          </Text>
+          <Text style={{ fontSize: 16, color: "#555" }}>Erróneas</Text>
+        </View>
+      </View>
+
+      {/* 💯 Puntuación */}
+      <View style={{ alignItems: "center", marginTop: 10 }}>
+        <Text
           style={{
-            marginTop: 24,
-            padding: 12,
-            backgroundColor: "#f9fafb",
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: "#e5e7eb",
+            fontSize: 22,
+            fontWeight: "700",
+            color: "#ff9800",
           }}
         >
-          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 6 }}>⚙️ Dificultad</Text>
-          <Text style={{ fontSize: 16, color: current.color, fontWeight: "600" }}>
-            {current.name}
-          </Text>
-          <Text style={{ fontSize: 14, color: "#666" }}>Nivel {difficulty} de 5</Text>
+          ⭐ Puntuación: {totalScore.toLocaleString()} pts
+        </Text>
+      </View>
 
-          {/* Botones compactos */}
-          <View
+      {/* 🎮 Controles */}
+      <View style={{ marginTop: 20 }}>
+        {phase === "ready" && (
+          <TouchableOpacity
+            onPress={onStartGame}
             style={{
-              flexDirection: "row",
-              justifyContent: "center",
+              backgroundColor: "#2196f3",
+              paddingVertical: 14,
+              borderRadius: 10,
               alignItems: "center",
-              marginTop: 10,
-              gap: 12,
             }}
           >
-            <TouchableOpacity
-              onPress={onDecreaseLevel}
-              disabled={difficulty <= 1}
-              style={{
-                backgroundColor: "#e5e7eb",
-                borderRadius: 50,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                opacity: difficulty <= 1 ? 0.5 : 1,
-              }}
-            >
-              <Text style={{ fontSize: 20 }}>➖</Text>
-            </TouchableOpacity>
-
-            <View
-              style={{
-                backgroundColor: current.color,
-                paddingHorizontal: 16,
-                paddingVertical: 6,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ fontWeight: "700" }}>{difficulty}</Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={onIncreaseLevel}
-              disabled={difficulty >= 5}
-              style={{
-                backgroundColor: "#e5e7eb",
-                borderRadius: 50,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                opacity: difficulty >= 5 ? 0.5 : 1,
-              }}
-            >
-              <Text style={{ fontSize: 20 }}>➕</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* 🔁 Acciones */}
-      <View>
-        {phase === "ready" && onStartGame && (
-          <>
-            <TouchableOpacity
-              onPress={onStartGame}
-              style={{
-                backgroundColor: "#3b82f6",
-                borderRadius: 10,
-                paddingVertical: 12,
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
-                {autoStartLabel ?? "▶ Iniciar juego"}
-              </Text>
-            </TouchableOpacity>
-          </>
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "600" }}>
+              {autoStartLabel}
+            </Text>
+          </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={onReset}
-          style={{
-            backgroundColor: "#fbbf24",
-            borderRadius: 10,
-            paddingVertical: 10,
-            alignItems: "center",
-            marginBottom: 8,
-          }}
-        >
-          <Text style={{ fontWeight: "700", fontSize: 16 }}>🔁 Reiniciar</Text>
-        </TouchableOpacity>
+
+        {isRunning && (
+          <TouchableOpacity
+            onPress={stopListening}
+            style={{
+              backgroundColor: listening ? "#f44336" : "#4caf50",
+              paddingVertical: 12,
+              borderRadius: 10,
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 18 }}>
+              {listening ? "🎙️ Detener micro" : "🎧 Reanudar micro"}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {(isRunning || isFinished) && (
+          <TouchableOpacity
+            onPress={onReset}
+            style={{
+              backgroundColor: "#ff9800",
+              paddingVertical: 12,
+              borderRadius: 10,
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 18 }}>🔁 Reiniciar</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           onPress={onExit}
           style={{
-            backgroundColor: "#9ca3af",
+            backgroundColor: "#9e9e9e",
+            paddingVertical: 12,
             borderRadius: 10,
-            paddingVertical: 10,
             alignItems: "center",
           }}
         >
-          <Text style={{ fontWeight: "700", fontSize: 16, color: "#fff" }}>
-            🏠 Volver al menú
-          </Text>
+          <Text style={{ color: "#fff", fontSize: 18 }}>🏠 Salir</Text>
         </TouchableOpacity>
       </View>
+
+      {/* 🔼/🔽 Controles de dificultad (modo libre) */}
+      {mode === "free" && (
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            marginTop: 10,
+          }}
+        >
+          <TouchableOpacity
+            onPress={onDecreaseLevel}
+            disabled={!onDecreaseLevel}
+            style={{
+              backgroundColor: "#e0e0e0",
+              paddingVertical: 8,
+              paddingHorizontal: 20,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ fontSize: 18 }}>⬇️ Nivel -</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onIncreaseLevel}
+            disabled={!onIncreaseLevel}
+            style={{
+              backgroundColor: "#e0e0e0",
+              paddingVertical: 8,
+              paddingHorizontal: 20,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ fontSize: 18 }}>⬆️ Nivel +</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }

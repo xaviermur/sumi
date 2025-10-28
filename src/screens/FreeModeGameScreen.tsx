@@ -1,24 +1,29 @@
-// src/screens/FreeModeGameScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
 import { View, Text, ScrollView } from "react-native";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { parseSpanishNumber } from "../utils/parseSpanishNumber";
 import { generateOperation } from "../core/logic/generateOperation";
+import { calculateScore } from "../core/logic/calculateScore";
+import {
+  getModeKey,
+  saveRecord,
+  ScoreRecord,
+} from "../core/logic/recordsStorage";
 import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
 import SummaryPanel from "../components/SummaryPanel";
 
 export default function FreeModeGameScreen({
   onExit,
-  duration,
-  difficulty,
+  duration = 60, // ⏱️ 1 o 2 minutos (60 o 120)
+  difficulty = 1,
 }: {
   onExit: () => void;
   duration?: number;
-  difficulty?: number; // 1–5
+  difficulty?: number;
 }) {
   // 🎯 Estado general
-  const [currentDifficulty, setCurrentDifficulty] = useState(difficulty ?? 1);
+  const [currentDifficulty, setCurrentDifficulty] = useState(difficulty);
   const [operation, setOperation] = useState(
     generateOperation({ difficulty: currentDifficulty })
   );
@@ -26,15 +31,19 @@ export default function FreeModeGameScreen({
   const [feedbackId, setFeedbackId] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
-  const [elapsed, setElapsed] = useState(duration ? formatSec(duration) : "0:00");
+  const [elapsed, setElapsed] = useState(duration);
   const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
+  const [results, setResults] = useState<any[]>([]);
+  const [totalScore, setTotalScore] = useState(0);
 
-  // 🧮 Resultados de la partida
-  const [results, setResults] = useState<any[]>([]); // guardamos TODAS las operaciones
+  // 🏆 Records
+  const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
+  const [isTop5, setIsTop5] = useState(false);
 
-  // 🔁 Refs para tiempo y operación
+  // 🔁 Refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number | null>(null);
+  const gameStartRef = useRef<number | null>(null);
+  const opStartRef = useRef<number | null>(null);
   const operationRef = useRef(operation);
 
   useEffect(() => {
@@ -59,17 +68,67 @@ export default function FreeModeGameScreen({
       setCorrect((c) => c + (success ? 1 : 0));
       setWrong((w) => w + (success ? 0 : 1));
 
-      const operationData = {
+      const timeTaken = opStartRef.current
+        ? (Date.now() - opStartRef.current) / 1000
+        : 0;
+
+      const points = calculateScore({
+        isCorrect: success,
+        level: operationRef.current.levelConfigId ?? 1,
+        timeTaken,
+        opType: operationRef.current.opType,
+        overflowCount: operationRef.current.overflowCount ?? 0,
+      });
+
+      const opData = {
         ...operationRef.current,
         given: spokenNumber,
         success,
+        points,
+        timeTaken,
       };
 
-      setResults((prev) => [...prev, operationData]); // ✅ guardamos TODAS las operaciones
+      setResults((prev) => [...prev, opData]);
+      setTotalScore((prev) => prev + points);
 
-      // 🔁 Nueva operación con misma dificultad
+      // 🔁 Nueva operación
       setOperation(generateOperation({ difficulty: currentDifficulty }));
+      opStartRef.current = Date.now();
     });
+
+  // 🚀 Iniciar juego
+  const handleStartGame = () => {
+    gameStartRef.current = Date.now();
+    opStartRef.current = Date.now();
+    setPhase("running");
+    if (!listening) startListening();
+  };
+
+  // ⏱️ Cronómetro
+  useEffect(() => {
+    if (phase !== "running") {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      if (!gameStartRef.current) return;
+      const elapsedSec = Math.floor((Date.now() - gameStartRef.current) / 1000);
+      const remaining = Math.max(duration - elapsedSec, 0);
+      setElapsed(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(timerRef.current!);
+        stopListening();
+        setPhase("finished");
+        setFeedback("⏱️ ¡Tiempo terminado!");
+      }
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [phase, duration, stopListening]);
 
   // ⬆️ / ⬇️ Dificultad
   const increaseLevel = () => {
@@ -88,58 +147,37 @@ export default function FreeModeGameScreen({
     });
   };
 
-  // 🔁 Reiniciar ronda
+  // 🏆 Guardar récord al finalizar
+  useEffect(() => {
+    if (phase !== "finished") return;
+
+    const modeKey = getModeKey("free", currentDifficulty, duration);
+    const record = { score: totalScore, correct, wrong };
+
+    saveRecord(modeKey, record).then(({ top, isTop5 }) => {
+      setTopRecords(top);
+      setIsTop5(isTop5);
+    });
+  }, [phase]);
+
+  // 🔁 Reiniciar
   const handleReset = () => {
     stopListening();
     if (timerRef.current) clearInterval(timerRef.current);
-    startTimeRef.current = null;
+    gameStartRef.current = null;
+    opStartRef.current = null;
     setCorrect(0);
     setWrong(0);
     setFeedback(null);
-    setElapsed(duration ? formatSec(duration) : "0:00");
+    setResults([]);
+    setTotalScore(0);
+    setTopRecords([]);
+    setIsTop5(false);
+    setElapsed(duration);
     setOperation(generateOperation({ difficulty: currentDifficulty }));
-    setResults([]); // 🧹 vaciamos resultados
     setPhase("ready");
   };
 
-  // 🚀 Iniciar juego
-  const handleStartGame = () => {
-    startTimeRef.current = Date.now();
-    setPhase("running");
-    if (!listening) startListening();
-  };
-
-  // ⏱️ Cronómetro
-  useEffect(() => {
-    if (phase !== "running") {
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-
-    timerRef.current = setInterval(() => {
-      if (!startTimeRef.current) return;
-      const elapsedSec = Math.floor((Date.now() - startTimeRef.current) / 1000);
-
-      if (duration) {
-        const remaining = Math.max(duration - elapsedSec, 0);
-        setElapsed(formatSec(remaining));
-        if (remaining === 0) {
-          clearInterval(timerRef.current!);
-          stopListening();
-          setPhase("finished");
-          setFeedback("⏱️ ¡Tiempo terminado!");
-        }
-      } else {
-        setElapsed(formatSec(elapsedSec));
-      }
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [phase, duration, stopListening]);
-
-  // 📄 Listado de errores (solo al final)
   const wrongAnswers = results.filter((r) => !r.success);
 
   return (
@@ -159,16 +197,17 @@ export default function FreeModeGameScreen({
         stopListening={stopListening}
         correct={correct}
         wrong={wrong}
-        elapsed={elapsed}
+        elapsed={`${elapsed}s`}
         onReset={handleReset}
         onExit={onExit}
         mode="free"
         difficulty={currentDifficulty}
-        onIncreaseLevel={increaseLevel}
-        onDecreaseLevel={decreaseLevel}
+        totalScore={totalScore}
         phase={phase}
         onStartGame={handleStartGame}
         autoStartLabel="▶ Iniciar (activa micro)"
+        onIncreaseLevel={increaseLevel}
+        onDecreaseLevel={decreaseLevel}
       />
 
       {/* PANEL DERECHO */}
@@ -200,12 +239,15 @@ export default function FreeModeGameScreen({
             title="⏹️ Fin de la ronda"
             correct={correct}
             wrong={wrong}
-            durationSeconds={typeof duration === "number" ? duration : undefined}
+            durationSeconds={duration}
+            totalScore={totalScore}
+            topRecords={topRecords}
+            isTop5={isTop5}
             onRetry={handleReset}
             onExit={onExit}
           />
 
-          {/* 🧾 Listado de errores */}
+          {/* 🧾 Errores */}
           {wrongAnswers.length > 0 && (
             <View style={{ marginTop: 20 }}>
               <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}>
@@ -233,7 +275,8 @@ export default function FreeModeGameScreen({
                       : "÷"}{" "}
                     {r.num2} = {r.given}{" "}
                     <Text style={{ color: "red" }}>
-                      (correcto: {r.result})
+                      (correcto: {r.result}) —{" "}
+                      {r.points > 0 ? `+${r.points}` : `${r.points}`} pts
                     </Text>
                   </Text>
                 ))}
@@ -244,11 +287,4 @@ export default function FreeModeGameScreen({
       )}
     </View>
   );
-}
-
-// 🔢 Formato del cronómetro
-function formatSec(total: number) {
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }
