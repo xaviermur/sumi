@@ -1,6 +1,5 @@
 import React from "react";
-import { View, Text, Button } from "react-native";
-import { LevelConfig } from "../core/logic/levels";
+import { View, Text, TouchableOpacity, Button } from "react-native";
 
 type LeftPanelProps = {
   listening: boolean;
@@ -13,25 +12,34 @@ type LeftPanelProps = {
   onReset: () => void;
   onExit: () => void;
 
-  mode?: "free" | "timed" | "levels" | "timeattack";
-  level?: LevelConfig;
+  mode?: "free" | "timed" | "levels" | "timeattack" | "custom";
+  difficulty?: number;
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
 
-  // 👇 nuevos
   phase?: "ready" | "running" | "finished";
   onStartGame?: () => void;
-  autoStartLabel?: string; // opcional, por si quieres personalizar el texto
+  autoStartLabel?: string;
 };
 
-export default function LeftPanel({...props}: LeftPanelProps) {
-  const {
-    listening, supported, startListening, stopListening,
-    correct, wrong, elapsed, onReset, onExit,
-    mode = "timed", level, onIncreaseLevel, onDecreaseLevel,
-    phase = "running", onStartGame, autoStartLabel,
-  } = props;
-
+export default function LeftPanel({
+  listening,
+  supported,
+  startListening,
+  stopListening,
+  correct,
+  wrong,
+  elapsed,
+  onReset,
+  onExit,
+  mode = "timed",
+  difficulty = 1,
+  onIncreaseLevel,
+  onDecreaseLevel,
+  phase = "running",
+  onStartGame,
+  autoStartLabel,
+}: LeftPanelProps) {
   const remainingSeconds =
     mode === "timeattack" ? parseInt(elapsed.replace(/\D/g, "")) || 0 : null;
   const timeColor =
@@ -39,14 +47,23 @@ export default function LeftPanel({...props}: LeftPanelProps) {
       ? "red"
       : "#000";
 
-  const showLevelControls = mode === "free" || mode === "timeattack";
+  const showDifficultyControls = mode === "free" || mode === "timeattack";
+
+  const difficultyLabels = [
+    { id: 1, name: "Muy fácil", color: "#A7F3D0" },
+    { id: 2, name: "Fácil", color: "#BFDBFE" },
+    { id: 3, name: "Media", color: "#FDE68A" },
+    { id: 4, name: "Difícil", color: "#FDBA74" },
+    { id: 5, name: "Experto", color: "#FCA5A5" },
+  ];
+  const current = difficultyLabels.find((d) => d.id === difficulty) ?? difficultyLabels[0];
 
   return (
     <View
       style={{
         flex: 1,
         backgroundColor: "#fff",
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 20,
         marginRight: 10,
         justifyContent: "space-between",
@@ -55,64 +72,156 @@ export default function LeftPanel({...props}: LeftPanelProps) {
         shadowRadius: 4,
       }}
     >
-      {/* 🎙️ MICRÓFONO */}
+      {/* 🎙️ Micrófono */}
       <View>
-        <Text style={{ fontSize: 24, marginBottom: 20, fontWeight: "600" }}>
-          🎙️ Micrófono
-        </Text>
-        <Button
-          title={listening ? "🔇 Apagar micro" : "🎤 Encender micro"}
+        <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 12 }}>🎙️ Micrófono</Text>
+        <TouchableOpacity
           onPress={() => (listening ? stopListening() : startListening())}
-          disabled={!supported || phase === "finished"} // opcional deshabilitar en resumen final
-        />
+          disabled={!supported || phase === "finished"}
+          style={{
+            backgroundColor: listening ? "#ef4444" : "#22c55e",
+            paddingVertical: 10,
+            borderRadius: 10,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
+            {listening ? "🔇 Apagar micro" : "🎤 Encender micro"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* 📊 INFO */}
-      <View style={{ marginTop: 30 }}>
+      {/* 📊 Estadísticas */}
+      <View style={{ marginTop: 20 }}>
         <Text style={{ fontSize: 20 }}>✅ Aciertos: {correct}</Text>
-        <Text style={{ fontSize: 20, marginTop: 4 }}>❌ Errores: {wrong}</Text>
-        <Text style={{ fontSize: 20, marginTop: 4, color: timeColor, fontWeight: mode === "timeattack" ? "700" : "normal" }}>
+        <Text style={{ fontSize: 20, marginTop: 6 }}>❌ Errores: {wrong}</Text>
+        <Text
+          style={{
+            fontSize: 20,
+            marginTop: 6,
+            color: timeColor,
+            fontWeight: "700",
+          }}
+        >
           ⏱️ Tiempo: {elapsed}
         </Text>
-
-        {showLevelControls && level && (
-          <View style={{ marginTop: 20 }}>
-            <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 6 }}>
-              ⚙️ Dificultad
-            </Text>
-            <Text style={{ fontSize: 16, fontWeight: "500", color: level.color }}>
-              {level.name}
-            </Text>
-            <Text style={{ fontSize: 14, color: "#666", marginTop: 2 }}>
-              {level.description}
-            </Text>
-
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 10 }}>
-              <Button title="⬇️ Nivel -" onPress={onDecreaseLevel} />
-              <Button title="⬆️ Nivel +" onPress={onIncreaseLevel} />
-            </View>
-          </View>
-        )}
       </View>
 
-      {/* 🔁 ACCIONES */}
+      {/* ⚙️ Dificultad */}
+      {showDifficultyControls && (
+        <View
+          style={{
+            marginTop: 24,
+            padding: 12,
+            backgroundColor: "#f9fafb",
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "700", marginBottom: 6 }}>⚙️ Dificultad</Text>
+          <Text style={{ fontSize: 16, color: current.color, fontWeight: "600" }}>
+            {current.name}
+          </Text>
+          <Text style={{ fontSize: 14, color: "#666" }}>Nivel {difficulty} de 5</Text>
+
+          {/* Botones compactos */}
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: 10,
+              gap: 12,
+            }}
+          >
+            <TouchableOpacity
+              onPress={onDecreaseLevel}
+              disabled={difficulty <= 1}
+              style={{
+                backgroundColor: "#e5e7eb",
+                borderRadius: 50,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                opacity: difficulty <= 1 ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 20 }}>➖</Text>
+            </TouchableOpacity>
+
+            <View
+              style={{
+                backgroundColor: current.color,
+                paddingHorizontal: 16,
+                paddingVertical: 6,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ fontWeight: "700" }}>{difficulty}</Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={onIncreaseLevel}
+              disabled={difficulty >= 5}
+              style={{
+                backgroundColor: "#e5e7eb",
+                borderRadius: 50,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                opacity: difficulty >= 5 ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 20 }}>➕</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* 🔁 Acciones */}
       <View>
-        {/* 👇 Solo en pre-partida */}
         {phase === "ready" && onStartGame && (
           <>
-            <Button
-              title={autoStartLabel ?? "▶ Iniciar juego"}
+            <TouchableOpacity
               onPress={onStartGame}
-            />
-            <View style={{ height: 10 }} />
+              style={{
+                backgroundColor: "#3b82f6",
+                borderRadius: 10,
+                paddingVertical: 12,
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>
+                {autoStartLabel ?? "▶ Iniciar juego"}
+              </Text>
+            </TouchableOpacity>
           </>
         )}
-        <Button
-          title={mode === "timeattack" ? "🔁 Reiniciar ronda" : "🔁 Empezar de nuevo"}
+        <TouchableOpacity
           onPress={onReset}
-        />
-        <View style={{ height: 10 }} />
-        <Button title="🏠 Volver al menú" onPress={onExit} />
+          style={{
+            backgroundColor: "#fbbf24",
+            borderRadius: 10,
+            paddingVertical: 10,
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <Text style={{ fontWeight: "700", fontSize: 16 }}>🔁 Reiniciar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onExit}
+          style={{
+            backgroundColor: "#9ca3af",
+            borderRadius: 10,
+            paddingVertical: 10,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontWeight: "700", fontSize: 16, color: "#fff" }}>
+            🏠 Volver al menú
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

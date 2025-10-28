@@ -1,10 +1,9 @@
 // src/screens/FreeModeGameScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
-import { View } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { parseSpanishNumber } from "../utils/parseSpanishNumber";
 import { generateOperation } from "../core/logic/generateOperation";
-import { LEVELS } from "../core/logic/levels";
 import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
 import SummaryPanel from "../components/SummaryPanel";
@@ -12,35 +11,37 @@ import SummaryPanel from "../components/SummaryPanel";
 export default function FreeModeGameScreen({
   onExit,
   duration,
+  difficulty,
 }: {
   onExit: () => void;
   duration?: number;
+  difficulty?: number; // 1–5
 }) {
-  const [levelIndex, setLevelIndex] = useState(0);
-  const levelIndexRef = useRef(levelIndex);
-  useEffect(() => {
-    levelIndexRef.current = levelIndex;
-  }, [levelIndex]);
-
+  // 🎯 Estado general
+  const [currentDifficulty, setCurrentDifficulty] = useState(difficulty ?? 1);
   const [operation, setOperation] = useState(
-    generateOperation(LEVELS[levelIndex].options)
+    generateOperation({ difficulty: currentDifficulty })
   );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackId, setFeedbackId] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
-  const [startTime, setStartTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(duration ? formatSec(duration) : "0:00");
-  const [lastResult, setLastResult] = useState<any>(null);
   const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
 
+  // 🧮 Resultados de la partida
+  const [results, setResults] = useState<any[]>([]); // guardamos TODAS las operaciones
+
+  // 🔁 Refs para tiempo y operación
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number | null>(null);
   const operationRef = useRef(operation);
 
   useEffect(() => {
     operationRef.current = operation;
   }, [operation]);
 
+  // 🎙️ Reconocimiento de voz
   const { listening, supported, micState, startListening, stopListening } =
     useSpeechRecognition((text) => {
       const cleaned = text.replace(/^resultado\s*/, "").trim();
@@ -54,32 +55,70 @@ export default function FreeModeGameScreen({
 
       const success = spokenNumber === result;
       setFeedback(success ? "✅ ¡Correcto!" : "❌ Incorrecto");
-      setFeedbackId((id) => id + 1); // 👈 esto fuerza animación cada vez      
+      setFeedbackId((id) => id + 1);
       setCorrect((c) => c + (success ? 1 : 0));
       setWrong((w) => w + (success ? 0 : 1));
-      setLastResult({
+
+      const operationData = {
         ...operationRef.current,
         given: spokenNumber,
         success,
-      });
+      };
 
-      // ✅ usar siempre el nivel actual actualizado
-      setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
+      setResults((prev) => [...prev, operationData]); // ✅ guardamos TODAS las operaciones
+
+      // 🔁 Nueva operación con misma dificultad
+      setOperation(generateOperation({ difficulty: currentDifficulty }));
     });
 
-  // ⏱️ Cronómetro (solo activo cuando running)
+  // ⬆️ / ⬇️ Dificultad
+  const increaseLevel = () => {
+    setCurrentDifficulty((prev) => {
+      const next = Math.min(prev + 1, 5);
+      setOperation(generateOperation({ difficulty: next }));
+      return next;
+    });
+  };
+
+  const decreaseLevel = () => {
+    setCurrentDifficulty((prev) => {
+      const next = Math.max(prev - 1, 1);
+      setOperation(generateOperation({ difficulty: next }));
+      return next;
+    });
+  };
+
+  // 🔁 Reiniciar ronda
+  const handleReset = () => {
+    stopListening();
+    if (timerRef.current) clearInterval(timerRef.current);
+    startTimeRef.current = null;
+    setCorrect(0);
+    setWrong(0);
+    setFeedback(null);
+    setElapsed(duration ? formatSec(duration) : "0:00");
+    setOperation(generateOperation({ difficulty: currentDifficulty }));
+    setResults([]); // 🧹 vaciamos resultados
+    setPhase("ready");
+  };
+
+  // 🚀 Iniciar juego
+  const handleStartGame = () => {
+    startTimeRef.current = Date.now();
+    setPhase("running");
+    if (!listening) startListening();
+  };
+
+  // ⏱️ Cronómetro
   useEffect(() => {
     if (phase !== "running") {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
 
-    if (!startTime) setStartTime(new Date());
-
     timerRef.current = setInterval(() => {
-      if (!startTime) return;
-
-      const elapsedSec = Math.floor((Date.now() - startTime.getTime()) / 1000);
+      if (!startTimeRef.current) return;
+      const elapsedSec = Math.floor((Date.now() - startTimeRef.current) / 1000);
 
       if (duration) {
         const remaining = Math.max(duration - elapsedSec, 0);
@@ -98,41 +137,10 @@ export default function FreeModeGameScreen({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [phase, startTime, duration, stopListening]);
+  }, [phase, duration, stopListening]);
 
-  const handleReset = () => {
-    stopListening();
-    setCorrect(0);
-    setWrong(0);
-    setFeedback(null);
-    setStartTime(null);
-    setElapsed(duration ? formatSec(duration) : "0:00");
-    setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
-    setLastResult(null);
-    setPhase("ready");
-  };
-
-  const increaseLevel = () => {
-    setLevelIndex((prev) => {
-      const next = Math.min(prev + 1, LEVELS.length - 1);
-      setOperation(generateOperation(LEVELS[next].options));
-      return next;
-    });
-  };
-
-  const decreaseLevel = () => {
-    setLevelIndex((prev) => {
-      const next = Math.max(prev - 1, 0);
-      setOperation(generateOperation(LEVELS[next].options));
-      return next;
-    });
-  };
-
-  const handleStartGame = () => {
-    setPhase("running");
-    setStartTime(new Date());
-    if (!listening) startListening(); // autoencender micro
-  };
+  // 📄 Listado de errores (solo al final)
+  const wrongAnswers = results.filter((r) => !r.success);
 
   return (
     <View
@@ -143,6 +151,7 @@ export default function FreeModeGameScreen({
         padding: 20,
       }}
     >
+      {/* PANEL IZQUIERDO */}
       <LeftPanel
         listening={listening}
         supported={supported}
@@ -154,7 +163,7 @@ export default function FreeModeGameScreen({
         onReset={handleReset}
         onExit={onExit}
         mode="free"
-        level={LEVELS[levelIndex]}
+        difficulty={currentDifficulty}
         onIncreaseLevel={increaseLevel}
         onDecreaseLevel={decreaseLevel}
         phase={phase}
@@ -162,30 +171,82 @@ export default function FreeModeGameScreen({
         autoStartLabel="▶ Iniciar (activa micro)"
       />
 
+      {/* PANEL DERECHO */}
       {phase === "running" && (
         <RightPanel
           operation={operation}
           micState={micState}
           feedback={feedback}
           feedbackId={feedbackId}
-          lastResult={lastResult}
+          lastResult={results[results.length - 1]}
         />
       )}
 
+      {/* PANEL FINAL */}
       {phase === "finished" && (
-        <SummaryPanel
-          title="⏹️ Fin de la ronda"
-          correct={correct}
-          wrong={wrong}
-          durationSeconds={typeof duration === "number" ? duration : undefined}
-          onRetry={handleReset}
-          onExit={onExit}
-        />
+        <View
+          style={{
+            flex: 2,
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            padding: 20,
+            marginLeft: 10,
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          }}
+        >
+          <SummaryPanel
+            title="⏹️ Fin de la ronda"
+            correct={correct}
+            wrong={wrong}
+            durationSeconds={typeof duration === "number" ? duration : undefined}
+            onRetry={handleReset}
+            onExit={onExit}
+          />
+
+          {/* 🧾 Listado de errores */}
+          {wrongAnswers.length > 0 && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}>
+                ❌ Operaciones falladas
+              </Text>
+              <ScrollView
+                style={{
+                  maxHeight: 250,
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 8,
+                  padding: 10,
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                {wrongAnswers.map((r, i) => (
+                  <Text key={i} style={{ fontSize: 18, marginBottom: 6 }}>
+                    {r.num1}{" "}
+                    {r.opType === "sum"
+                      ? "+"
+                      : r.opType === "sub"
+                      ? "-"
+                      : r.opType === "mul"
+                      ? "×"
+                      : "÷"}{" "}
+                    {r.num2} = {r.given}{" "}
+                    <Text style={{ color: "red" }}>
+                      (correcto: {r.result})
+                    </Text>
+                  </Text>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
       )}
     </View>
   );
 }
 
+// 🔢 Formato del cronómetro
 function formatSec(total: number) {
   const m = Math.floor(total / 60);
   const s = total % 60;

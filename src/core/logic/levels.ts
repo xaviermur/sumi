@@ -13,7 +13,7 @@ export const LEVELS: LevelConfig[] = [
     id: 1,
     name: "Nivel 1",
     description: "Sumas básicas de un solo dígito sin acarreo.",
-    color: "#A7F3D0", // verde claro
+    color: "#A7F3D0",
     options: {
       type: ["sum"],
       range1: [0, 9],
@@ -26,7 +26,7 @@ export const LEVELS: LevelConfig[] = [
     id: 2,
     name: "Nivel 2",
     description: "Restas simples de un solo dígito sin préstamo.",
-    color: "#BFDBFE", // azul claro
+    color: "#BFDBFE",
     options: {
       type: ["sub"],
       range1: [0, 9],
@@ -39,7 +39,7 @@ export const LEVELS: LevelConfig[] = [
     id: 3,
     name: "Nivel 3",
     description: "Sumas y restas sencillas con resultados hasta 20.",
-    color: "#FDE68A", // amarillo suave
+    color: "#FDE68A",
     options: {
       type: ["sum", "sub"],
       range1: [0, 9],
@@ -52,7 +52,7 @@ export const LEVELS: LevelConfig[] = [
     id: 4,
     name: "Nivel 4",
     description: "Operaciones con un acarreo o préstamo sencillo.",
-    color: "#FDBA74", // naranja claro
+    color: "#FDBA74",
     options: {
       type: ["sum", "sub"],
       range1: [0, 9],
@@ -65,7 +65,7 @@ export const LEVELS: LevelConfig[] = [
     id: 5,
     name: "Nivel 5",
     description: "Operaciones con números de dos cifras pequeñas.",
-    color: "#FCA5A5", // rojo claro
+    color: "#FCA5A5",
     options: {
       type: ["sum", "sub"],
       range1: [10, 20],
@@ -78,7 +78,7 @@ export const LEVELS: LevelConfig[] = [
     id: 6,
     name: "Nivel 6",
     description: "Sumas y restas hasta 25, manteniendo baja dificultad.",
-    color: "#C7D2FE", // violeta suave
+    color: "#C7D2FE",
     options: {
       type: ["sum", "sub"],
       range1: [10, 25],
@@ -91,7 +91,7 @@ export const LEVELS: LevelConfig[] = [
     id: 7,
     name: "Nivel 7",
     description: "Operaciones hasta 50, con múltiplos de 10 en el segundo número.",
-    color: "#86EFAC", // verde suave
+    color: "#86EFAC",
     options: {
       type: ["sum", "sub"],
       range1: [10, 50],
@@ -105,7 +105,7 @@ export const LEVELS: LevelConfig[] = [
     id: 8,
     name: "Nivel 8",
     description: "Operaciones con múltiplos de 5 y resultados hasta 30.",
-    color: "#93C5FD", // azul medio
+    color: "#93C5FD",
     options: {
       type: ["sum", "sub"],
       range1: [10, 50],
@@ -119,7 +119,7 @@ export const LEVELS: LevelConfig[] = [
     id: 9,
     name: "Nivel 9",
     description: "Sumas y restas con múltiplos de 5, rango ampliado hasta 50.",
-    color: "#E9D5FF", // lila
+    color: "#E9D5FF",
     options: {
       type: ["sum", "sub"],
       range1: [10, 50],
@@ -133,7 +133,7 @@ export const LEVELS: LevelConfig[] = [
     id: 10,
     name: "Nivel 10",
     description: "Operaciones mixtas con resultados moderados (hasta 50).",
-    color: "#FCD34D", // amarillo fuerte
+    color: "#FCD34D",
     options: {
       type: ["sum", "sub"],
       range1: [10, 75],
@@ -146,7 +146,7 @@ export const LEVELS: LevelConfig[] = [
     id: 11,
     name: "Nivel 11",
     description: "Operaciones más amplias con dos cifras, resultado hasta 75.",
-    color: "#FCA5A5", // rojo pastel
+    color: "#FCA5A5",
     options: {
       type: ["sum", "sub"],
       range1: [10, 99],
@@ -159,7 +159,7 @@ export const LEVELS: LevelConfig[] = [
     id: 12,
     name: "Nivel 12",
     description: "Sumas y restas de dos cifras con dificultad alta.",
-    color: "#A5B4FC", // violeta medio
+    color: "#A5B4FC",
     options: {
       type: ["sum", "sub"],
       range1: [10, 99],
@@ -172,7 +172,7 @@ export const LEVELS: LevelConfig[] = [
     id: 13,
     name: "Nivel 13",
     description: "Operaciones de tres cifras: el desafío final.",
-    color: "#60A5FA", // azul intenso
+    color: "#60A5FA",
     options: {
       type: ["sum", "sub"],
       range1: [10, 999],
@@ -182,3 +182,13 @@ export const LEVELS: LevelConfig[] = [
     },
   },
 ];
+
+/**
+ * Devuelve la configuración de nivel (LevelConfig) según el id.
+ * Si no se encuentra, lanza un error para evitar inconsistencias silenciosas.
+ */
+export function getLevelConfig(id: number): LevelConfig {
+  const level = LEVELS.find((lvl) => lvl.id === id);
+  if (!level) throw new Error(`LevelConfig con id=${id} no encontrado`);
+  return level;
+}
