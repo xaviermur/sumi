@@ -37,6 +37,10 @@ export function generateOperation(
   // Seleccionamos aleatoriamente uno de los tipos permitidos
   const opType: OperationType = type[Math.floor(Math.random() * type.length)];
 
+  const numDigits = (n: number) => {
+    return Math.abs(n).toString().length;
+  }
+
   const generateNumber = (range: [number, number], multipleOf: number | null) => {
     const [min, max] = range;
     let n = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -73,6 +77,10 @@ export function generateOperation(
         result = num1 / num2;
         break;
     }
+
+    const maxOverflowDigits = (opType === "sum") ? Math.max(numDigits(num1),numDigits(num2)) : numDigits(num2) - 1;
+    overflowDigits[1] = Math.min(overflowDigits[1], maxOverflowDigits);
+    overflowDigits[0] = Math.min(overflowDigits[0], overflowDigits[1]);
 
     if (result < resultRange[0] || result > resultRange[1]) continue;
 

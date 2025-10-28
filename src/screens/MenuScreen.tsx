@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, Button, TouchableOpacity } from "react-native";
+import { View, Text, Button, TouchableOpacity, Switch } from "react-native";
 
 export default function MenuScreen({
   onStartGame,
@@ -9,10 +9,65 @@ export default function MenuScreen({
   const [selectedMode, setSelectedMode] = useState<
     "free" | "timed" | "levels" | "custom" | null
   >(null);
-  const [difficulty, setDifficulty] = useState<number>(1); // 1–5
+  const [difficulty, setDifficulty] = useState<number>(1);
   const [duration, setDuration] = useState<number>(60);
 
+  // ⚙️ Custom config
+  const [sumEnabled, setSumEnabled] = useState(true);
+  const [subEnabled, setSubEnabled] = useState(false);
+  const [carryEnabled, setCarryEnabled] = useState(false);
+  const [selectedOperatorType, setSelectedOperatorType] = useState<
+    "small" | "medium" | "large" | "xlarge" | "unlimited"
+  >("small");
+
+  const operatorRanges: Record<
+    "small" | "medium" | "large" | "xlarge" | "unlimited",
+    [number, number]
+  > = {
+    small: [1, 9],
+    medium: [10, 20],
+    large: [20, 50],
+    xlarge: [50, 100],
+    unlimited: [100, 1000],
+  };
+
+  const overflowMinByType: Record<
+    "small" | "medium" | "large" | "xlarge" | "unlimited",
+    number
+  > = {
+    small: 1,
+    medium: 2,
+    large: 2,
+    xlarge: 2,
+    unlimited: 3,
+  };
+
   const handleStart = () => {
+    if (selectedMode === "custom") {
+      const types: ("sum" | "sub")[] = [];
+      if (sumEnabled) types.push("sum");
+      if (subEnabled) types.push("sub");
+
+      const baseRange = operatorRanges[selectedOperatorType];
+      const overflowMin = overflowMinByType[selectedOperatorType];
+
+      const customOptions = {
+        type: types.length ? types : ["sum"],
+        range1: baseRange,
+        range2: baseRange,
+        overflowDigits: carryEnabled ? [overflowMin, overflowMin] : [0, 0],
+        resultRange: [baseRange[0], baseRange[1] * 2],
+      };
+
+      onStartGame({
+        mode: "custom",
+        duration,
+        customOptions,
+      });
+      return;
+    }
+
+    // Modos normales
     onStartGame({
       mode: selectedMode,
       difficulty,
@@ -53,7 +108,6 @@ export default function MenuScreen({
         {[
           { key: "free", label: "Modo libre (tiempo personalizado)" },
           { key: "timed", label: "Contrarreloj (1 minuto)" },
-          { key: "levels", label: "Por niveles (progresivo)" },
           { key: "custom", label: "Personalizado (configura tu modo)" },
         ].map((opt) => (
           <TouchableOpacity
@@ -63,7 +117,8 @@ export default function MenuScreen({
               padding: 10,
               borderRadius: 8,
               marginBottom: 8,
-              backgroundColor: selectedMode === opt.key ? "#4caf50" : "#eee",
+              backgroundColor:
+                selectedMode === opt.key ? "#4caf50" : "#eee",
             }}
           >
             <Text
@@ -78,7 +133,7 @@ export default function MenuScreen({
         ))}
       </View>
 
-      {/* ⚙️ Dificultad (solo si NO es modo custom) */}
+      {/* ⚙️ Dificultad (no para modo custom) */}
       {selectedMode !== "custom" && (
         <View
           style={{
@@ -95,39 +150,33 @@ export default function MenuScreen({
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
             ⚙️ Dificultad
           </Text>
-          {[
-            { key: 1, label: "Muy fácil" },
-            { key: 2, label: "Fácil" },
-            { key: 3, label: "Media" },
-            { key: 4, label: "Difícil" },
-            { key: 5, label: "Experto" },
-          ].map((opt) => (
+          {[1, 2, 3, 4, 5].map((n) => (
             <TouchableOpacity
-              key={opt.key}
-              onPress={() => setDifficulty(opt.key)}
+              key={n}
+              onPress={() => setDifficulty(n)}
               style={{
                 padding: 10,
                 borderRadius: 8,
                 marginBottom: 8,
                 backgroundColor:
-                  difficulty === opt.key ? "#2196f3" : "#eee",
+                  difficulty === n ? "#2196f3" : "#eee",
               }}
             >
               <Text
                 style={{
                   fontSize: 18,
-                  color: difficulty === opt.key ? "#fff" : "#333",
+                  color: difficulty === n ? "#fff" : "#333",
                 }}
               >
-                {opt.label}
+                {["Muy fácil", "Fácil", "Media", "Difícil", "Experto"][n - 1]}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* ⏱️ Duración (solo en modo libre) */}
-      {selectedMode === "free" && (
+      {/* ⏱️ Duración (solo modo libre o custom) */}
+      {(selectedMode === "free" || selectedMode === "custom") && (
         <View
           style={{
             backgroundColor: "#fff",
@@ -143,7 +192,7 @@ export default function MenuScreen({
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
             ⏱️ Duración
           </Text>
-          {[60, 120, 180, 300].map((sec) => (
+          {[60, 120, 180, 300, 600].map((sec) => (
             <TouchableOpacity
               key={sec}
               onPress={() => setDuration(sec)}
@@ -167,8 +216,86 @@ export default function MenuScreen({
         </View>
       )}
 
+      {/* 🔧 Configuración personalizada (solo si modo = custom) */}
+      {selectedMode === "custom" && (
+        <View
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            padding: 20,
+            width: "90%",
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+            marginBottom: 25,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
+            ⚙️ Configuración personalizada
+          </Text>
+
+          {/* Tipo de operaciones */}
+          <Text style={{ fontSize: 18, fontWeight: "500", marginBottom: 10 }}>
+            Tipo de operaciones
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+            <Switch value={sumEnabled} onValueChange={setSumEnabled} />
+            <Text style={{ marginLeft: 8, fontSize: 16 }}>Sumas</Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 15 }}>
+            <Switch value={subEnabled} onValueChange={setSubEnabled} />
+            <Text style={{ marginLeft: 8, fontSize: 16 }}>Restas</Text>
+          </View>
+
+          {/* Llevadas */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+            <Switch value={carryEnabled} onValueChange={setCarryEnabled} />
+            <Text style={{ marginLeft: 8, fontSize: 16 }}>Incluir llevadas</Text>
+          </View>
+
+          {/* Operadores */}
+          <Text style={{ fontSize: 18, fontWeight: "500", marginBottom: 10 }}>
+            Tipo de operadores
+          </Text>
+          {[
+            { key: "small", label: "Unidades (1–9)" },
+            { key: "medium", label: "Medianos (10–20)" },
+            { key: "large", label: "Mayores (20–50)" },
+            { key: "xlarge", label: "Más grandes (50–100)" },
+            { key: "unlimited", label: "Sin límite (100–1000)" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              onPress={() =>
+                setSelectedOperatorType(opt.key as typeof selectedOperatorType)
+              }
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                marginBottom: 6,
+                backgroundColor:
+                  selectedOperatorType === opt.key ? "#3b82f6" : "#eee",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: selectedOperatorType === opt.key ? "#fff" : "#333",
+                }}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {/* 🚀 Botón Comenzar */}
-      <Button title="🚀 Comenzar" onPress={handleStart} disabled={!selectedMode} />
+      <Button
+        title="🚀 Comenzar"
+        onPress={handleStart}
+        disabled={!selectedMode}
+      />
     </View>
   );
 }

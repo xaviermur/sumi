@@ -1,34 +1,36 @@
-// src/screens/TimeAttackGameScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
-import { View } from "react-native";
+import { View, Text, ScrollView } from "react-native";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 import { parseSpanishNumber } from "../utils/parseSpanishNumber";
 import { generateOperation } from "../core/logic/generateOperation";
-import { LEVELS } from "../core/logic/levels";
 import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
 import SummaryPanel from "../components/SummaryPanel";
 
 const ROUND_SECONDS = 60;
 
-export default function TimeAttackGameScreen({ onExit }: { onExit: () => void }) {
-  const [levelIndex, setLevelIndex] = useState(0);
-  const levelIndexRef = useRef(levelIndex);
-  useEffect(() => {
-    levelIndexRef.current = levelIndex;
-  }, [levelIndex]);
-
+export default function TimeAttackGameScreen({
+  onExit,
+  difficulty = 1,
+}: {
+  onExit: () => void;
+  difficulty?: number; // 1–5
+}) {
+  // 🎯 Estado general
   const [operation, setOperation] = useState(
-    generateOperation(LEVELS[levelIndex].options)
+    generateOperation({ difficulty })
   );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackId, setFeedbackId] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
-  const [lastResult, setLastResult] = useState<any>(null);
   const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
 
+  // 🧮 Resultados de la partida
+  const [results, setResults] = useState<any[]>([]);
+
+  // 🔁 Refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const operationRef = useRef(operation);
 
@@ -36,6 +38,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
     operationRef.current = operation;
   }, [operation]);
 
+  // 🎙️ Reconocimiento de voz
   const { listening, supported, micState, startListening, stopListening } =
     useSpeechRecognition((text) => {
       const cleaned = text.replace(/^resultado\s*/, "").trim();
@@ -49,21 +52,43 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
 
       const success = spokenNumber === result;
       setFeedback(success ? "✅ ¡Correcto!" : "❌ Incorrecto");
-      setFeedbackId((id) => id + 1); // 👈 esto fuerza animación cada vez      
+      setFeedbackId((id) => id + 1);
       setCorrect((c) => c + (success ? 1 : 0));
       setWrong((w) => w + (success ? 0 : 1));
 
-      setLastResult({
+      const operationData = {
         ...operationRef.current,
         given: spokenNumber,
         success,
-      });
+      };
 
-      // ✅ usar el nivel actual desde la referencia
-      setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
+      setResults((prev) => [...prev, operationData]);
+
+      // 🔁 Nueva operación con misma dificultad
+      setOperation(generateOperation({ difficulty }));
     });
 
-  // ⏱️ cuenta regresiva SOLO en running
+  // 🔁 Reiniciar ronda
+  const handleReset = () => {
+    stopListening();
+    if (timerRef.current) clearInterval(timerRef.current);
+    setCorrect(0);
+    setWrong(0);
+    setFeedback(null);
+    setResults([]);
+    setTimeLeft(ROUND_SECONDS);
+    setOperation(generateOperation({ difficulty }));
+    setPhase("ready");
+  };
+
+  // 🚀 Iniciar juego
+  const handleStartGame = () => {
+    setPhase("running");
+    setTimeLeft(ROUND_SECONDS);
+    if (!listening) startListening();
+  };
+
+  // ⏱️ Cronómetro
   useEffect(() => {
     if (phase !== "running") {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -76,6 +101,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
           clearInterval(timerRef.current!);
           stopListening();
           setPhase("finished");
+          setFeedback("⏱️ ¡Tiempo terminado!");
           return 0;
         }
         return prev - 1;
@@ -87,37 +113,8 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
     };
   }, [phase, stopListening]);
 
-  const handleReset = () => {
-    stopListening();
-    setCorrect(0);
-    setWrong(0);
-    setFeedback(null);
-    setTimeLeft(ROUND_SECONDS);
-    setOperation(generateOperation(LEVELS[levelIndexRef.current].options));
-    setLastResult(null);
-    setPhase("ready");
-  };
-
-  const increaseLevel = () => {
-    setLevelIndex((prev) => {
-      const next = Math.min(prev + 1, LEVELS.length - 1);
-      setOperation(generateOperation(LEVELS[next].options));
-      return next;
-    });
-  };
-
-  const decreaseLevel = () => {
-    setLevelIndex((prev) => {
-      const next = Math.max(prev - 1, 0);
-      setOperation(generateOperation(LEVELS[next].options));
-      return next;
-    });
-  };
-
-  const handleStartGame = () => {
-    setPhase("running");
-    if (!listening) startListening(); // auto-encender micro al iniciar
-  };
+  // 📄 Listado de errores
+  const wrongAnswers = results.filter((r) => !r.success);
 
   return (
     <View
@@ -128,6 +125,7 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
         padding: 20,
       }}
     >
+      {/* PANEL IZQUIERDO */}
       <LeftPanel
         listening={listening}
         supported={supported}
@@ -135,37 +133,86 @@ export default function TimeAttackGameScreen({ onExit }: { onExit: () => void })
         stopListening={stopListening}
         correct={correct}
         wrong={wrong}
-        elapsed={`${timeLeft}s`} // en ready mostramos "60s"
+        elapsed={`${timeLeft}s`}
         onReset={handleReset}
         onExit={onExit}
         mode="timeattack"
-        level={LEVELS[levelIndex]}
-        onIncreaseLevel={increaseLevel}
-        onDecreaseLevel={decreaseLevel}
+        difficulty={difficulty}
         phase={phase}
         onStartGame={handleStartGame}
         autoStartLabel="▶ Iniciar (activa micro)"
       />
 
+      {/* PANEL DERECHO */}
       {phase === "running" && (
         <RightPanel
           operation={operation}
           micState={micState}
           feedback={feedback}
           feedbackId={feedbackId}
-          lastResult={lastResult}
+          lastResult={results[results.length - 1]}
         />
       )}
 
+      {/* PANEL FINAL */}
       {phase === "finished" && (
-        <SummaryPanel
-          title="⏱️ ¡Tiempo terminado!"
-          correct={correct}
-          wrong={wrong}
-          durationSeconds={ROUND_SECONDS}
-          onRetry={handleReset}
-          onExit={onExit}
-        />
+        <View
+          style={{
+            flex: 2,
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            padding: 20,
+            marginLeft: 10,
+            shadowColor: "#000",
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+          }}
+        >
+          <SummaryPanel
+            title="⏱️ ¡Tiempo terminado!"
+            correct={correct}
+            wrong={wrong}
+            durationSeconds={ROUND_SECONDS}
+            onRetry={handleReset}
+            onExit={onExit}
+          />
+
+          {/* 🧾 Listado de errores */}
+          {wrongAnswers.length > 0 && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}>
+                ❌ Operaciones falladas
+              </Text>
+              <ScrollView
+                style={{
+                  maxHeight: 250,
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 8,
+                  padding: 10,
+                  backgroundColor: "#fafafa",
+                }}
+              >
+                {wrongAnswers.map((r, i) => (
+                  <Text key={i} style={{ fontSize: 18, marginBottom: 6 }}>
+                    {r.num1}{" "}
+                    {r.opType === "sum"
+                      ? "+"
+                      : r.opType === "sub"
+                      ? "-"
+                      : r.opType === "mul"
+                      ? "×"
+                      : "÷"}{" "}
+                    {r.num2} = {r.given}{" "}
+                    <Text style={{ color: "red" }}>
+                      (correcto: {r.result})
+                    </Text>
+                  </Text>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
       )}
     </View>
   );
