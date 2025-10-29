@@ -1,13 +1,12 @@
 import { GenerateOperationOptions, OperationType } from "../types/operation";
 import { difficultyMap } from "../config/difficultyMap";
-import { getLevelConfig } from "./levels"; // <-- función que devuelve un LevelConfig por id
+import { getLevelConfig } from "./levels";
 
 export function generateOperation(
   options: GenerateOperationOptions & { difficulty?: number } = {}
 ) {
   const { difficulty, ...rest } = options;
 
-  // Si se pasa una dificultad, elegimos un LevelConfig aleatorio de esa dificultad
   let levelConfig: GenerateOperationOptions | null = null;
   let selectedLevelConfigId: number | null = null;
 
@@ -15,12 +14,9 @@ export function generateOperation(
     const availableLevels = difficultyMap[difficulty];
     selectedLevelConfigId =
       availableLevels[Math.floor(Math.random() * availableLevels.length)];
-    
-    // 💡 usamos solo la parte de opciones
     levelConfig = getLevelConfig(selectedLevelConfigId).options;
   }
 
-  // Combinamos los valores: LevelConfig tiene prioridad, luego options, luego defaults
   const {
     type = ["sum", "sub"],
     range1 = [1, 20],
@@ -34,53 +30,37 @@ export function generateOperation(
     ...(levelConfig || {}),
   };
 
-  // Seleccionamos aleatoriamente uno de los tipos permitidos
   const opType: OperationType = type[Math.floor(Math.random() * type.length)];
-
-  const numDigits = (n: number) => {
-    return Math.abs(n).toString().length;
-  }
+  const numDigits = (n: number) => Math.abs(n).toString().length;
 
   const generateNumber = (range: [number, number], multipleOf: number | null) => {
     const [min, max] = range;
     let n = Math.floor(Math.random() * (max - min + 1)) + min;
 
-    if (multipleOf) {
+    if (multipleOf && multipleOf <= (max - min)) {
       n -= n % multipleOf;
       if (n < min) n += multipleOf;
       if (n > max) n -= multipleOf;
     }
-
     return n;
   };
 
-  let num1, num2, result;
+  let candidate = null;
 
   for (let i = 0; i < 1000; i++) {
-    num1 = generateNumber(range1, multipleOf1);
-    num2 = generateNumber(range2, multipleOf2);
+    const num1 = generateNumber(range1, multipleOf1);
+    const num2 = generateNumber(range2, multipleOf2);
 
     if (opType === "sub" && num2 > num1) continue;
+    if (opType === "div" && (num2 === 0 || num1 % num2 !== 0)) continue;
 
+    let result: number;
     switch (opType) {
-      case "sum":
-        result = num1 + num2;
-        break;
-      case "sub":
-        result = num1 - num2;
-        break;
-      case "mul":
-        result = num1 * num2;
-        break;
-      case "div":
-        if (num2 === 0 || num1 % num2 !== 0) continue;
-        result = num1 / num2;
-        break;
+      case "sum": result = num1 + num2; break;
+      case "sub": result = num1 - num2; break;
+      case "mul": result = num1 * num2; break;
+      case "div": result = num1 / num2; break;
     }
-
-    const maxOverflowDigits = (opType === "sum") ? Math.max(numDigits(num1),numDigits(num2)) : numDigits(num2) - 1;
-    overflowDigits[1] = Math.min(overflowDigits[1], maxOverflowDigits);
-    overflowDigits[0] = Math.min(overflowDigits[0], overflowDigits[1]);
 
     if (result < resultRange[0] || result > resultRange[1]) continue;
 
@@ -97,25 +77,51 @@ export function generateOperation(
       }
     }
 
-    if (overflowCount >= overflowDigits[0] && overflowCount <= overflowDigits[1]) {
-      return {
-        num1,
-        num2,
-        result,
-        opType,
-        overflowCount,
-        levelConfigId: selectedLevelConfigId,
-        difficulty: difficulty ?? null,
-      };
+    // Validación de overflow flexible
+    const [minOvf, maxOvf] = overflowDigits;
+    const maxOverflowPossible =
+      opType === "sum" ? Math.max(numDigits(num1), numDigits(num2)) : Math.max(0, numDigits(num2) - 1);
+
+    if (overflowCount >= Math.min(minOvf, maxOverflowPossible) &&
+        overflowCount <= Math.min(maxOvf, maxOverflowPossible)) {
+      candidate = { num1, num2, result, opType, overflowCount };
+      break;
     }
   }
 
-  console.error("generateOperation: No se pudo generar una operación válida con los parámetros dados", {
-    type,
-    range1,
-    range2,
-    overflowDigits,
-    resultRange,
-  });
-  throw new Error("No se pudo generar una operación válida con los parámetros dados");
+  if (!candidate) {
+    // 🔄 fallback: relajar condiciones para no romper el flujo del juego
+    console.warn("⚠️ generateOperation: no válida, usando fallback relajado", {
+      type,
+      range1,
+      range2,
+      overflowDigits,
+      resultRange,
+    });
+
+    const num1 = generateNumber(range1, multipleOf1);
+    const num2 = generateNumber(range2, multipleOf2);
+    const result =
+      opType === "sub" ? Math.abs(num1 - num2)
+      : opType === "sum" ? num1 + num2
+      : opType === "mul" ? num1 * num2
+      : num2 === 0 ? 0 : Math.floor(num1 / num2);
+
+    return {
+      num1,
+      num2,
+      result,
+      opType,
+      overflowCount: 0,
+      levelConfigId: selectedLevelConfigId,
+      difficulty: difficulty ?? null,
+      fallback: true,
+    };
+  }
+
+  return {
+    ...candidate,
+    levelConfigId: selectedLevelConfigId,
+    difficulty: difficulty ?? null,
+  };
 }
