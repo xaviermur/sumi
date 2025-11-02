@@ -18,7 +18,8 @@ interface LeftPanelProps {
   autoStartLabel?: string;
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
-  totalScore?: number; // 🆕 marcador de puntuación
+  totalScore?: number;
+  onOpenHelp?: (section?: string) => void; // 🆕 nuevo prop
 }
 
 export default function LeftPanel({
@@ -39,6 +40,7 @@ export default function LeftPanel({
   onIncreaseLevel,
   onDecreaseLevel,
   totalScore = 0,
+  onOpenHelp, // 🆕
 }: LeftPanelProps) {
   const isRunning = phase === "running";
   const isFinished = phase === "finished";
@@ -73,13 +75,7 @@ export default function LeftPanel({
       </View>
 
       {/* 🕒 Timer */}
-      <View
-        style={{
-          alignItems: "center",
-          marginTop: 10,
-          marginBottom: 10,
-        }}
-      >
+      <View style={{ alignItems: "center", marginVertical: 10 }}>
         <Text
           style={{
             fontSize: 54,
@@ -192,6 +188,24 @@ export default function LeftPanel({
         >
           <Text style={{ color: "#fff", fontSize: 18 }}>🏠 Salir</Text>
         </TouchableOpacity>
+
+        {/* 🆕 Link a la ayuda */}
+        {onOpenHelp && (
+          <TouchableOpacity
+            onPress={() => onOpenHelp("howToAnswer")}
+            style={{
+              marginTop: 12,
+              backgroundColor: "#3b82f6",
+              paddingVertical: 10,
+              borderRadius: 8,
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 18 }}>
+              ❓ Cómo responder
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* 🔼/🔽 Controles de dificultad (modo libre) */}

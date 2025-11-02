@@ -139,20 +139,20 @@ export const LEVELS: LevelConfig[] = [
       range1: [10, 75],
       range2: [10, 75],
       overflowDigits: [0, 1],
-      resultRange: [10, 50],
+      resultRange: [10, 75],
     },
   },
   {
     id: 11,
     name: "Nivel 11",
-    description: "Operaciones más amplias con dos cifras, resultado hasta 75.",
+    description: "Operaciones más amplias con dos cifras, resultado hasta 99.",
     color: "#FCA5A5",
     options: {
       type: ["sum", "sub"],
       range1: [10, 99],
       range2: [10, 99],
       overflowDigits: [0, 1],
-      resultRange: [10, 75],
+      resultRange: [10, 99],
     },
   },
   {

@@ -2,17 +2,20 @@ import React, { useState } from "react";
 import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
+import { HelpSectionId } from "./HelpScreen";
 
 interface FreeModeGameScreenProps {
   onExit: () => void;
   difficulty?: number;
   duration?: number; // segundos
+  onOpenHelp: (section?: HelpSectionId) => void; // ✅ nuevo
 }
 
 export default function FreeModeGameScreen({
   onExit,
   difficulty = 1,
   duration = 60,
+  onOpenHelp
 }: FreeModeGameScreenProps) {
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
   const [isTop5, setIsTop5] = useState(false);
@@ -90,6 +93,7 @@ export default function FreeModeGameScreen({
       onDecreaseLevel={decreaseLevel}
       titleSummary="⏹️ Fin de la ronda"
       durationSeconds={duration}
+      onOpenHelp={onOpenHelp}
     />
   );
 }

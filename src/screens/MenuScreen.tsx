@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { View, Text, Button, TouchableOpacity, Switch } from "react-native";
+import { Ionicons } from "@expo/vector-icons"; // 👈 si usas Expo
 
 export default function MenuScreen({
   onStartGame,
   onShowRecords, // 🆕 nuevo prop
+  onOpenHelp
 }: {
   onStartGame: (options?: any) => void;
   onShowRecords: () => void; // 🆕 callback
+  onOpenHelp: () => void;
 }) {
   const [selectedMode, setSelectedMode] = useState<
     "free" | "timed" | "levels" | "custom" | null
@@ -86,9 +89,24 @@ export default function MenuScreen({
         padding: 20,
       }}
     >
+
       <Text style={{ fontSize: 32, fontWeight: "700", marginBottom: 30 }}>
         🧮 CEREBRiN
       </Text>
+
+      {/* 🔹 Botón de ayuda (arriba derecha) */}
+      <View
+        style={{
+          position: "absolute",
+          top: 40,
+          right: 20,
+          zIndex: 10,
+        }}
+      >
+        <TouchableOpacity onPress={onOpenHelp}>
+          <Ionicons name="help-circle-outline" size={36} color="#2196f3" />
+        </TouchableOpacity>
+      </View>
 
       {/* 🎮 Modo de juego */}
       <View
@@ -108,7 +126,7 @@ export default function MenuScreen({
         </Text>
         {[
           { key: "free", label: "Modo libre (1 o 2 minutos)" },
-          { key: "timed", label: "Contrarreloj (1 minuto fijo)" },
+          { key: "timeattack", label: "Contrarreloj (1 minuto fijo)" },
           { key: "custom", label: "Personalizado (elige tus reglas)" },
         ].map((opt) => (
           <TouchableOpacity

@@ -1,21 +1,36 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
+import { HelpSectionId } from "./HelpScreen";
 
 const ROUND_SECONDS = 60;
 
 interface TimeAttackGameScreenProps {
   onExit: () => void;
   difficulty?: number;
+  onOpenHelp: (section?: HelpSectionId) => void; // ✅ nuevo
 }
 
 export default function TimeAttackGameScreen({
   onExit,
   difficulty = 1,
+  onOpenHelp
 }: TimeAttackGameScreenProps) {
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
   const [isTop5, setIsTop5] = useState(false);
+
+  const handleFinish = useCallback(
+    ({ correct, wrong, totalScore }: GameSummary) => {
+      const modeKey = getModeKey("timeattack", difficulty);
+      const record = { score: totalScore, correct, wrong };
+      saveRecord(modeKey, record).then(({ top, isTop5 }) => {
+        setTopRecords(top);
+        setIsTop5(isTop5);
+      });
+    },
+    [difficulty]
+  );
 
   const {
     operation,
@@ -40,15 +55,6 @@ export default function TimeAttackGameScreen({
     duration: ROUND_SECONDS,
     onFinish: handleFinish,
   });
-
-  function handleFinish({ correct, wrong, totalScore }: GameSummary) {
-    const modeKey = getModeKey("timeattack", difficulty);
-    const record = { score: totalScore, correct, wrong };
-    saveRecord(modeKey, record).then(({ top, isTop5 }) => {
-      setTopRecords(top);
-      setIsTop5(isTop5);
-    });
-  }
 
   return (
     <GameScreenLayout
@@ -75,6 +81,7 @@ export default function TimeAttackGameScreen({
       difficulty={difficulty}
       titleSummary="⏱️ ¡Tiempo terminado!"
       durationSeconds={ROUND_SECONDS}
+      onOpenHelp={onOpenHelp}
     />
   );
 }

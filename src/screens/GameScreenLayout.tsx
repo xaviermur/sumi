@@ -6,6 +6,7 @@ import RightPanel from "../components/RightPanel";
 import SummaryPanel from "../components/SummaryPanel";
 import type { ScoreRecord } from "../core/logic/recordsStorage";
 import type { MicState } from "../hooks/useSpeechRecognition";
+import { HelpSectionId } from "./HelpScreen";
 
 interface GameScreenLayoutProps {
   // 🔹 Datos base del juego
@@ -38,6 +39,8 @@ interface GameScreenLayoutProps {
   onDecreaseLevel?: () => void;
   titleSummary?: string;
   durationSeconds?: number;
+
+  onOpenHelp: (section?: HelpSectionId) => void;
 }
 
 export default function GameScreenLayout({
@@ -66,6 +69,7 @@ export default function GameScreenLayout({
   onDecreaseLevel,
   titleSummary = "⏹️ Fin de la ronda",
   durationSeconds,
+  onOpenHelp,
 }: GameScreenLayoutProps) {
   const wrongAnswers = results.filter((r) => !r.success);
 
@@ -97,6 +101,7 @@ export default function GameScreenLayout({
         autoStartLabel="▶ Iniciar (activa micro)"
         onIncreaseLevel={onIncreaseLevel}
         onDecreaseLevel={onDecreaseLevel}
+        onOpenHelp={() => onOpenHelp("howToAnswer")}
       />
 
       {/* 🧮 PANEL DERECHO */}

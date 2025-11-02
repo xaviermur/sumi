@@ -1,17 +1,20 @@
 import React from "react";
 import { useGameCore } from "../hooks/useGameCore";
 import GameScreenLayout from "./GameScreenLayout";
+import { HelpSectionId } from "./HelpScreen";
 
 interface CustomModeGameScreenProps {
   onExit: () => void;
   duration?: number;
   customOptions: any;
+  onOpenHelp: (section?: HelpSectionId) => void; // ✅ nuevo
 }
 
 export default function CustomModeGameScreen({
   onExit,
   duration,
   customOptions,
+  onOpenHelp,
 }: CustomModeGameScreenProps) {
   const {
     operation,
@@ -58,6 +61,7 @@ export default function CustomModeGameScreen({
       stopListening={stopListening}
       titleSummary="⏹️ Fin del modo personalizado"
       durationSeconds={duration}
+      onOpenHelp={onOpenHelp}
     />
   );
 }
