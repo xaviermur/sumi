@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-type MicState = "idle" | "waiting" | "listening" | "processing";
+export type MicState = "idle" | "waiting" | "listening" | "processing";
 
 export function useSpeechRecognition(onCommand: (text: string) => void) {
   const [supported, setSupported] = useState(false);

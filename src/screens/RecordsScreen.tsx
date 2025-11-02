@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getModeKey, getRecords, ScoreRecord } from "../core/logic/recordsStorage";
+import { ScoreRecord } from "../core/logic/recordsStorage";
 
 interface GroupedRecords {
   key: string;
@@ -19,34 +19,35 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
   }, []);
 
   async function loadAllRecords() {
-    const raw = await AsyncStorage.getItem("sumi_records_v1");
+    const raw = await AsyncStorage.getItem("cerebrin_records_v1");
     if (!raw) return;
     const data = JSON.parse(raw);
 
-    const parsed: GroupedRecords[] = Object.entries(data).map(([key, records]: any) => {
-      const freeMatch = key.match(/^free_d(\d+)_t(\d+)/);
-      const timeMatch = key.match(/^timeattack_d(\d+)/);
+    const parsed: GroupedRecords[] = Object.entries(data)
+      .map(([key, records]: any) => {
+        const freeMatch = key.match(/^free_d(\d+)_t(\d+)/);
+        const timeMatch = key.match(/^timeattack_d(\d+)/);
 
-      if (freeMatch) {
-        return {
-          key,
-          mode: "free",
-          difficulty: parseInt(freeMatch[1]),
-          duration: parseInt(freeMatch[2]),
-          records,
-        };
-      } else if (timeMatch) {
-        return {
-          key,
-          mode: "timeattack",
-          difficulty: parseInt(timeMatch[1]),
-          records,
-        };
-      }
-      return null;
-    }).filter(Boolean) as GroupedRecords[];
+        if (freeMatch) {
+          return {
+            key,
+            mode: "free",
+            difficulty: parseInt(freeMatch[1]),
+            duration: parseInt(freeMatch[2]),
+            records,
+          };
+        } else if (timeMatch) {
+          return {
+            key,
+            mode: "timeattack",
+            difficulty: parseInt(timeMatch[1]),
+            records,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as GroupedRecords[];
 
-    // Ordenamos por modo y dificultad
     parsed.sort((a, b) => {
       if (a.mode !== b.mode) return a.mode.localeCompare(b.mode);
       if (a.difficulty !== b.difficulty) return a.difficulty - b.difficulty;
@@ -55,6 +56,9 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
 
     setGroups(parsed);
   }
+
+  const medalIcons = ["🥇", "🥈", "🥉"];
+  const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f4f4f4", padding: 20 }}>
@@ -106,31 +110,67 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
                 </Text>
               </View>
 
-              {/* Top 5 */}
-              {g.records.map((r, idx) => (
-                <View
-                  key={idx}
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    paddingVertical: 6,
-                    borderBottomWidth: idx === g.records.length - 1 ? 0 : 1,
-                    borderColor: "#eee",
-                  }}
-                >
-                  <Text style={{ fontSize: 18, color: "#333" }}>
-                    {idx + 1}. {r.score.toLocaleString()} pts
-                  </Text>
-                  <Text style={{ color: "#666", fontSize: 16 }}>
-                    ✅ {r.correct} ❌ {r.wrong}
-                  </Text>
-                </View>
-              ))}
+              {/* 🥇 Tabla de puntuaciones */}
+              {g.records.map((r, idx) => {
+                const isMedal = idx < 3;
+                const label = isMedal ? medalIcons[idx] : `#${idx + 1}`;
+                const color = isMedal ? medalColors[idx] : "#666";
+
+                return (
+                  <View
+                    key={idx}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingVertical: 6,
+                      borderBottomWidth: idx === g.records.length - 1 ? 0 : 1,
+                      borderColor: "#eee",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 20,
+                        width: 50,
+                        textAlign: "center",
+                        color,
+                        fontWeight: isMedal ? "700" : "400",
+                      }}
+                    >
+                      {label}
+                    </Text>
+
+                    <Text
+                      style={{
+                        fontSize: 18,
+                        fontWeight: "500",
+                        color: "#222",
+                        flex: 1,
+                        textAlign: "left",
+                      }}
+                    >
+                      {r.score} pts
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#555",
+                        fontSize: 15,
+                        textAlign: "right",
+                        width: 90,
+                      }}
+                    >
+                      ✅ {r.correct} ❌ {r.wrong}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ))}
         </ScrollView>
       )}
 
+      {/* Botón volver */}
       <TouchableOpacity
         onPress={onBack}
         style={{

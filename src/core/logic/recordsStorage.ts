@@ -10,7 +10,7 @@ export interface ScoreRecord {
 
 type ModeKey = string; // ejemplo: "free_d1_t60" o "timeattack_d3"
 
-const STORAGE_KEY = "sumi_records_v1";
+const STORAGE_KEY = "cerebrin_records_v1";
 
 /** Genera la clave para este modo/configuración */
 export function getModeKey(

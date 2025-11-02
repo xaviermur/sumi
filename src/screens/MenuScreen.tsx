@@ -87,7 +87,7 @@ export default function MenuScreen({
       }}
     >
       <Text style={{ fontSize: 32, fontWeight: "700", marginBottom: 30 }}>
-        🧮 SUMi
+        🧮 CEREBRiN
       </Text>
 
       {/* 🎮 Modo de juego */}

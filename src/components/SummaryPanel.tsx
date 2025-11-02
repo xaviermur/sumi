@@ -33,6 +33,7 @@ export default function SummaryPanel({
 }: SummaryPanelProps) {
   const total = correct + wrong;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const medalIcons = ["🥇", "🥈", "🥉"];
 
   return (
     <View
@@ -117,61 +118,53 @@ export default function SummaryPanel({
 
       {/* 🏆 CLASIFICACIÓN TOP5 */}
       {topRecords && topRecords.length > 0 && (
-        <View
-          style={{
-            marginTop: 25,
-            backgroundColor: "#fafafa",
-            borderRadius: 10,
-            padding: 10,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: "700",
-              textAlign: "center",
-              marginBottom: 8,
-              color: "#333",
-            }}
-          >
-            🏅 Mejores puntuaciones
+        <View style={{ marginTop: 20 }}>
+          <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}>
+            🏆 Mejores puntuaciones
           </Text>
 
-          <ScrollView style={{ maxHeight: 180 }}>
-            {topRecords.map((r, i) => {
-              const isCurrent = isTop5 && i === topRecords.findIndex(x => x.date === r.date);
-              return (
-                <View
-                  key={i}
+          {topRecords.map((record, index) => {
+            const medalIcons = ["🥇", "🥈", "🥉"];
+            const colors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+            const label = medalIcons[index] ?? `#${index + 1}`;
+            const color = colors[index] ?? "#666";
+
+            return (
+              <View
+                key={index}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 3,
+                }}
+              >
+                {/* Icono y número pegados */}
+                <Text
                   style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    paddingVertical: 6,
-                    backgroundColor: isCurrent ? "#fff3e0" : "transparent",
-                    borderRadius: 6,
+                    fontSize: 18,
+                    color,
+                    fontWeight: index < 3 ? "700" : "400",
+                    marginRight: 8, // pequeño margen solo
+                    width: 28, // mismo ancho visual
+                    textAlign: "center",
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 18,
-                      fontWeight: isCurrent ? "700" : "500",
-                      color: isCurrent ? "#ff9800" : "#333",
-                    }}
-                  >
-                    {i + 1}. {r.score} pts
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      color: "#666",
-                    }}
-                  >
-                    ✅ {r.correct} ❌ {r.wrong}
-                  </Text>
-                </View>
-              );
-            })}
-          </ScrollView>
+                  {label}
+                </Text>
+
+                {/* Puntuación */}
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: "500",
+                    color: "#222",
+                  }}
+                >
+                  {record.score} pts
+                </Text>
+              </View>
+            );
+          })}
         </View>
       )}
 
