@@ -1,9 +1,14 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
-interface LeftPanelProps {
+// ─────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────
+
+export type GameMode = "free" | "timeattack" | "custom";
+
+export interface LeftPanelProps {
   listening: boolean;
-  supported: boolean;
   startListening: () => void;
   stopListening: () => void;
   correct: number;
@@ -11,7 +16,7 @@ interface LeftPanelProps {
   elapsed: string;
   onReset: () => void;
   onExit: () => void;
-  mode: "free" | "timeattack" | "custom";
+  mode: GameMode;
   difficulty?: number;
   phase: "ready" | "running" | "finished";
   onStartGame: () => void;
@@ -19,12 +24,15 @@ interface LeftPanelProps {
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
   totalScore?: number;
-  onOpenHelp?: (section?: string) => void; // 🆕 nuevo prop
+  onOpenHelp?: (section?: string) => void;
 }
+
+// ─────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────
 
 export default function LeftPanel({
   listening,
-  supported,
   startListening,
   stopListening,
   correct,
@@ -40,7 +48,7 @@ export default function LeftPanel({
   onIncreaseLevel,
   onDecreaseLevel,
   totalScore = 0,
-  onOpenHelp, // 🆕
+  onOpenHelp,
 }: LeftPanelProps) {
   const isRunning = phase === "running";
   const isFinished = phase === "finished";
@@ -48,86 +56,89 @@ export default function LeftPanel({
   return (
     <View
       style={{
-        flex: 1,
         backgroundColor: "#ffffff",
         borderRadius: 16,
         padding: 20,
-        justifyContent: "space-between",
         shadowColor: "#000",
         shadowOpacity: 0.1,
         shadowRadius: 6,
+        flexShrink: 1,
       }}
     >
-      {/* 🔹 Encabezado */}
-      <View style={{ alignItems: "center" }}>
-        <Text style={{ fontSize: 28, fontWeight: "700", color: "#333" }}>
-          {mode === "free"
-            ? "🆓 Modo libre"
-            : mode === "timeattack"
-            ? "⏱️ Contrarreloj"
-            : "⚙️ Modo personalizado"}
-        </Text>
-        {difficulty && (
-          <Text style={{ fontSize: 18, color: "#777", marginTop: 4 }}>
-            Dificultad: {difficulty}
+      {/* ⭐ PARTE SUPERIOR */}
+      <View>
+        {/* 🔹 Título */}
+        <View style={{ alignItems: "center", marginBottom: 10 }}>
+          <Text style={{ fontSize: 28, fontWeight: "700", color: "#333" }}>
+            {mode === "free"
+              ? "🆓 Modo libre"
+              : mode === "timeattack"
+              ? "⏱️ Contrarreloj"
+              : "⚙️ Modo personalizado"}
           </Text>
-        )}
-      </View>
 
-      {/* 🕒 Timer */}
-      <View style={{ alignItems: "center", marginVertical: 10 }}>
-        <Text
-          style={{
-            fontSize: 54,
-            fontWeight: "800",
-            color: isFinished ? "#999" : "#222",
-          }}
-        >
-          {elapsed}
-        </Text>
-        <Text style={{ fontSize: 16, color: "#777" }}>
-          {isRunning ? "Tiempo restante" : "Listo para comenzar"}
-        </Text>
-      </View>
-
-      {/* 📊 Marcadores */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-around",
-          alignItems: "center",
-          marginVertical: 10,
-        }}
-      >
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 40, color: "#4caf50", fontWeight: "700" }}>
-            ✅ {correct}
-          </Text>
-          <Text style={{ fontSize: 16, color: "#555" }}>Correctas</Text>
+          {difficulty !== undefined && (
+            <Text style={{ fontSize: 18, color: "#777", marginTop: 4 }}>
+              Dificultad: {difficulty}
+            </Text>
+          )}
         </View>
 
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 40, color: "#f44336", fontWeight: "700" }}>
-            ❌ {wrong}
+        {/* 🕒 Timer */}
+        <View style={{ alignItems: "center", marginVertical: 10 }}>
+          <Text
+            style={{
+              fontSize: 54,
+              fontWeight: "800",
+              color: isFinished ? "#999" : "#222",
+            }}
+          >
+            {elapsed}
           </Text>
-          <Text style={{ fontSize: 16, color: "#555" }}>Erróneas</Text>
+          <Text style={{ fontSize: 16, color: "#777" }}>
+            {isRunning ? "Tiempo restante" : "Listo para comenzar"}
+          </Text>
+        </View>
+
+        {/* 📊 Correctas / Erróneas */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-around",
+            alignItems: "center",
+            marginVertical: 10,
+          }}
+        >
+          <View style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 40, color: "#4caf50", fontWeight: "700" }}>
+              ✅ {correct}
+            </Text>
+            <Text style={{ fontSize: 16, color: "#555" }}>Correctas</Text>
+          </View>
+
+          <View style={{ alignItems: "center" }}>
+            <Text style={{ fontSize: 40, color: "#f44336", fontWeight: "700" }}>
+              ❌ {wrong}
+            </Text>
+            <Text style={{ fontSize: 16, color: "#555" }}>Erróneas</Text>
+          </View>
+        </View>
+
+        {/* 💯 Puntuación */}
+        <View style={{ alignItems: "center", marginTop: 10 }}>
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: "700",
+              color: "#ff9800",
+            }}
+          >
+            ⭐ Puntuación: {totalScore.toLocaleString()} pts
+          </Text>
         </View>
       </View>
 
-      {/* 💯 Puntuación */}
-      <View style={{ alignItems: "center", marginTop: 10 }}>
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "700",
-            color: "#ff9800",
-          }}
-        >
-          ⭐ Puntuación: {totalScore.toLocaleString()} pts
-        </Text>
-      </View>
-
-      {/* 🎮 Controles */}
+      {/* ⭐ BOTONES — SIEMPRE ABAJO */}
       <View style={{ marginTop: 20 }}>
         {phase === "ready" && (
           <TouchableOpacity
@@ -137,6 +148,7 @@ export default function LeftPanel({
               paddingVertical: 14,
               borderRadius: 10,
               alignItems: "center",
+              marginBottom: 10,
             }}
           >
             <Text style={{ color: "#fff", fontSize: 20, fontWeight: "600" }}>
@@ -177,6 +189,7 @@ export default function LeftPanel({
           </TouchableOpacity>
         )}
 
+        {/* Salir */}
         <TouchableOpacity
           onPress={onExit}
           style={{
@@ -189,7 +202,7 @@ export default function LeftPanel({
           <Text style={{ color: "#fff", fontSize: 18 }}>🏠 Salir</Text>
         </TouchableOpacity>
 
-        {/* 🆕 Link a la ayuda */}
+        {/* ❓ Ayuda */}
         {onOpenHelp && (
           <TouchableOpacity
             onPress={() => onOpenHelp("howToAnswer")}
@@ -208,18 +221,17 @@ export default function LeftPanel({
         )}
       </View>
 
-      {/* 🔼/🔽 Controles de dificultad (modo libre) */}
+      {/* 🔼/🔽 dificultad */}
       {mode === "free" && (
         <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
-            marginTop: 10,
+            marginTop: 14,
           }}
         >
           <TouchableOpacity
             onPress={onDecreaseLevel}
-            disabled={!onDecreaseLevel}
             style={{
               backgroundColor: "#e0e0e0",
               paddingVertical: 8,
@@ -232,7 +244,6 @@ export default function LeftPanel({
 
           <TouchableOpacity
             onPress={onIncreaseLevel}
-            disabled={!onIncreaseLevel}
             style={{
               backgroundColor: "#e0e0e0",
               paddingVertical: 8,

@@ -1,165 +1,231 @@
 // src/hooks/useGameCore.ts
 import { useEffect, useRef, useState } from "react";
+import { parseSpanishNumber } from "../utils/parseSpanishNumber";
 import { generateOperation } from "../core/logic/generateOperation";
 import { calculateScore } from "../core/logic/calculateScore";
-import { parseSpanishNumber } from "../utils/parseSpanishNumber";
-import { useSpeechRecognition } from "./useSpeechRecognition";
+import { MicState, useSpeechRecognition } from "./useSpeechRecognition";
+
+import type { Operation, OperationType, GenerateOperationOptions } from "../core/types/operation";
+
+// --------------------------------------------------
+// Tipos propios del hook
+// --------------------------------------------------
+
+export interface ResultEntry extends Operation {
+  given: number;
+  success: boolean;
+  points: number;
+  timeTaken: number;
+}
 
 export interface GameSummary {
   correct: number;
   wrong: number;
   totalScore: number;
-  results: any[];
+  results: ResultEntry[];
 }
 
-type Phase = "ready" | "running" | "finished";
-
-interface UseGameCoreOptions {
+export interface UseGameCoreOptions {
   mode: "free" | "timeattack" | "custom";
   difficulty?: number;
-  duration?: number; // segundos
-  customOptions?: any;
+  duration?: number;
+  customOptions?: GenerateOperationOptions;
   onFinish?: (summary: GameSummary) => void;
 }
 
-/**
- * Hook central del sistema de juego.
- * Contiene toda la lógica común a los modos Free, TimeAttack y Custom.
- */
+export interface UseGameCoreReturn {
+  operation: Operation;
+  feedback: string | null;
+  feedbackId: number;
+  correct: number;
+  wrong: number;
+  totalScore: number;
+  results: ResultEntry[];
+  phase: "ready" | "running" | "finished";
+  timeLeft: number;
+  micState: MicState;
+  listening: boolean;
+  startGame: () => void;
+  startListening: () => void;
+  stopListening: () => void;
+  resetGame: () => void;
+}
+
+// --------------------------------------------------
+// Hook principal
+// --------------------------------------------------
+
 export function useGameCore({
   mode,
   difficulty = 1,
   duration,
   customOptions,
   onFinish,
-}: UseGameCoreOptions) {
-  // 🎯 Estado general
-  const [operation, setOperation] = useState(
+}: UseGameCoreOptions): UseGameCoreReturn {
+  const [operation, setOperation] = useState<Operation>(
     generateOperation(customOptions ?? { difficulty })
   );
+
+  const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
+  const [correct, setCorrect] = useState<number>(0);
+  const [wrong, setWrong] = useState<number>(0);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [feedbackId, setFeedbackId] = useState(0);
-  const [correct, setCorrect] = useState(0);
-  const [wrong, setWrong] = useState(0);
-  const [totalScore, setTotalScore] = useState(0);
-  const [results, setResults] = useState<any[]>([]);
-  const [phase, setPhase] = useState<Phase>("ready");
-  const [timeLeft, setTimeLeft] = useState(duration ?? 0);
+  const [feedbackId, setFeedbackId] = useState<number>(0);
+  const [totalScore, setTotalScore] = useState<number>(0);
+  const [results, setResults] = useState<ResultEntry[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number>(duration ?? 0);
 
-  // 🔁 Refs
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const gameStartRef = useRef<number | null>(null);
-  const opStartRef = useRef<number | null>(null);
-  const operationRef = useRef(operation);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opStartRef = useRef<number>(Date.now());
 
-  // 🎙️ Speech recognition
-  const { listening, supported, micState, startListening, stopListening } =
-    useSpeechRecognition(onSpeechResult);
+  const opLockRef = useRef<boolean>(false); // evita respuestas repetidas
+  const opCooldownRef = useRef<boolean>(false); // ignora ruido tras nueva operación
 
-  useEffect(() => {
-    operationRef.current = operation;
-  }, [operation]);
+  // 🎤 reconocimiento
+  const { startListening, stopListening, listening, micState } =
+    useSpeechRecognition(handleStableSpeech);
 
-  // 🎤 Procesar resultado hablado
-  function onSpeechResult(text: string) {
-    const cleaned = text.replace(/^resultado\s*/, "").trim();
-    const spokenNumber = parseSpanishNumber(cleaned);
-    const result = Number(operationRef.current.result);
+  // --------------------------------------------------
+  // Llega texto final estable
+  // --------------------------------------------------
+  function handleStableSpeech(text: string) {
+    console.log("💬 Respuesta recibida:", text);
 
-    if (!Number.isFinite(spokenNumber)) {
-      setFeedback(`🤔 No entendí el número (“${cleaned}”).`);
-      return;
-    }
+    if (phase !== "running") return;
+    if (opCooldownRef.current) return;
+    if (opLockRef.current) return;
 
-    const success = spokenNumber === result;
-    setFeedback(success ? "✅ ¡Correcto!" : "❌ Incorrecto");
+    const number = Number(text);
+    if (!Number.isFinite(number)) return;
+
+    opLockRef.current = true;
+
+    // 🛑 DETENER AQUÍ el reconocimiento
+    setTimeout(() => stopListening(), 0);
+    processAnswer(number);
+  }
+
+
+  // --------------------------------------------------
+  // Procesar respuesta
+  // --------------------------------------------------
+  function processAnswer(num: number) {
+    console.log("🎮 processAnswer num =", num, "esperado =", operation.result);
+    const expected = operation.result;
+    const ok = num === expected;
+
+    setFeedback(ok ? "✅ ¡Correcto!" : `❌ Incorrecto (${expected})`);
     setFeedbackId((id) => id + 1);
-    setCorrect((c) => c + (success ? 1 : 0));
-    setWrong((w) => w + (success ? 0 : 1));
 
-    const timeTaken = opStartRef.current
-      ? (Date.now() - opStartRef.current) / 1000
-      : 0;
+    if (ok) setCorrect((n) => n + 1);
+    else setWrong((n) => n + 1);
+
+    const timeTaken = (Date.now() - opStartRef.current) / 1000;
 
     const points = calculateScore({
-      isCorrect: success,
-      level: operationRef.current.levelConfigId ?? 1,
+      isCorrect: ok,
+      level: (customOptions?.levelConfigId ?? difficulty) ?? 1,
       timeTaken,
-      opType: operationRef.current.opType,
-      overflowCount: operationRef.current.overflowCount ?? 0,
+      opType: operation.opType,
+      overflowCount: (customOptions?.overflowDigits?.[0] ?? 0),
     });
 
-    const opData = {
-      ...operationRef.current,
-      given: spokenNumber,
-      success,
+    const entry: ResultEntry = {
+      ...operation,
+      given: num,
+      success: ok,
       points,
       timeTaken,
     };
 
-    setResults((prev) => [...prev, opData]);
+    setResults((prev) => [...prev, entry]);
     setTotalScore((p) => p + points);
-    setOperation(generateOperation(customOptions ?? { difficulty }));
-    opStartRef.current = Date.now();
+
+    nextOperation();
   }
 
-  // 🚀 Iniciar juego
+  // --------------------------------------------------
+  // Siguiente operación
+  // --------------------------------------------------
+  function nextOperation() {
+    console.log("🎮 nextOperation");
+
+    opLockRef.current = false;
+    opCooldownRef.current = true;
+
+    // solo generamos operación nueva
+    setOperation(generateOperation(customOptions ?? { difficulty }));
+
+    // cooldown para ignorar ruido anterior
+    setTimeout(() => {
+      opCooldownRef.current = false;
+    }, 250); // 250ms es suficiente
+  }
+
+
+  // --------------------------------------------------
+  // Start game
+  // --------------------------------------------------
   function startGame() {
-    gameStartRef.current = Date.now();
-    opStartRef.current = Date.now();
     setPhase("running");
     setFeedback(null);
-    if (!listening) startListening();
+    opStartRef.current = Date.now();
+    startListening();
   }
 
-  // 🔁 Reiniciar
+  // --------------------------------------------------
+  // Reset
+  // --------------------------------------------------
   function resetGame() {
     stopListening();
     if (timerRef.current) clearInterval(timerRef.current);
+
+    setPhase("ready");
+    setOperation(generateOperation(customOptions ?? { difficulty }));
     setCorrect(0);
     setWrong(0);
-    setTotalScore(0);
-    setResults([]);
     setFeedback(null);
-    setPhase("ready");
+    setResults([]);
+    setTotalScore(0);
     setTimeLeft(duration ?? 0);
-    setOperation(generateOperation(customOptions ?? { difficulty }));
   }
 
-  // ⏱️ Temporizador
+  // --------------------------------------------------
+  // Temporizador
+  // --------------------------------------------------
   useEffect(() => {
     if (phase !== "running" || !duration) return;
-    timerRef.current = setInterval(() => {
-      const elapsedSec = Math.floor((Date.now() - (gameStartRef.current ?? 0)) / 1000);
-      const remaining = Math.max(duration - elapsedSec, 0);
-      setTimeLeft(remaining);
 
-      if (remaining <= 0) {
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - opStartRef.current) / 1000);
+      const rem = duration - elapsed;
+
+      setTimeLeft(rem);
+
+      if (rem <= 0) {
         clearInterval(timerRef.current!);
         stopListening();
         setPhase("finished");
-        setFeedback("⏱️ ¡Tiempo terminado!");
         onFinish?.({ correct, wrong, totalScore, results });
       }
     }, 1000);
-    return () => clearInterval(timerRef.current!);
-  }, [phase, duration]);
 
-  // ⌨️ Atajo: ESC para terminar (solo web)
+    return () => clearInterval(timerRef.current!);
+  }, [phase]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setTimeLeft(0);
-        setPhase("finished");
-        stopListening();
-        onFinish?.({ correct, wrong, totalScore, results });
-      }
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }
-  }, [correct, wrong, totalScore, results]);
+    if (phase !== "running") return;
+
+    opStartRef.current = Date.now();
+  }, [operation]);
+
+  // Cuando React ya ha pintado la nueva operación → ahora sí arrancamos micro
+  useEffect(() => {
+    if (phase !== "running") return;
+
+    console.log("🎮 Nueva operación pintada → startListening()");
+    startListening();
+  }, [operation]);
 
   return {
     operation,
@@ -171,12 +237,11 @@ export function useGameCore({
     results,
     phase,
     timeLeft,
-    listening,
-    supported,
     micState,
+    listening,
     startGame,
-    resetGame,
     startListening,
     stopListening,
+    resetGame,
   };
 }

@@ -3,8 +3,9 @@
     "name": "cerebrin",
     "slug": "cerebrin",
     "version": "1.0.0",
-    "sdkVersion": "52.0.0",
+    "sdkVersion": "54.0.0",
     "platforms": [
+      "ios",
       "android",
       "web"
     ],
@@ -19,7 +20,27 @@
       "expo-asset"
     ],
     "web": {
-      "babel": { "useHermes": false }
-    }    
+      "babel": {
+        "useHermes": false
+      }
+    },
+    "ios": {
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Esta app necesita acceso al micrófono para el reconocimiento de voz",
+        "NSSpeechRecognitionUsageDescription": "Esta app usa el reconocimiento de voz para procesar tus respuestas",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.xmur.cerebrin",
+      "supportsTablet": true,
+      "requireFullScreen": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ffc5988a-827d-4061-908d-84f76aa36280"
+      }
+    },
+    "android": {
+      "package": "com.xmur.cerebrin"
+    }
   }
 }

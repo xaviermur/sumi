@@ -20,4 +20,6 @@ export interface GenerateOperationOptions {
   multipleOf1?: number | null;
   multipleOf2?: number | null;
   resultRange?: [number, number];
+  levelConfigId?: number;
+  difficulty?: number;
 }

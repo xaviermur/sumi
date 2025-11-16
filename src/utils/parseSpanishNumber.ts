@@ -1,62 +1,72 @@
-const UNIDADES: Record<string, number> = {
-  cero: 0, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, sinco: 5,
-  seis: 6, siete: 7, ocho: 8, nueve: 9,
-};
+export function parseSpanishNumber(text: any): number {
+  if (!text || typeof text !== "string") {
+    return NaN; // nunca rompas la app
+  }
 
-const DIEZ_A_DIECINUEVE: Record<string, number> = {
-  diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
-  dieciseis: 16, dieciséis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
-};
-
-const DECENAS: Record<string, number> = {
-  veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60,
-  setenta: 70, ochenta: 80, noventa: 90,
-};
-
-const CENTENAS: Record<string, number> = {
-  cien: 100, ciento: 100, doscientos: 200, trescientos: 300,
-  cuatrocientos: 400, quinientos: 500, seiscientos: 600,
-  setecientos: 700, ochocientos: 800, novecientos: 900,
-};
-
-// Limpieza básica
-function normalize(text: string): string {
-  return text
+  // Normalización segura
+  const normalized = text
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // quita acentos
-    .replace(/[^\w\s]/g, "") // quita signos
-    .replace(/\s+y\s+/g, " ") // quita 'y' intermedios
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+y\s+/g, " ")
     .trim();
-}
 
-export function parseSpanishNumber(text: string): number {
-  const normalized = normalize(text);
+  if (!normalized) return NaN;
 
-  // Si contiene dígitos, los usamos directamente
-  const numericMatch = normalized.match(/\d+/);
-  if (numericMatch) {
-    return Number(numericMatch[0]);
+  // 1️⃣ Si hay números → usa el ULTIMO
+  const numericMatches = normalized.match(/\d+/g);
+  if (numericMatches && numericMatches.length > 0) {
+    return Number(numericMatches[numericMatches.length - 1]);
   }
 
-  const words = normalized.split(/\s+/);
+  // 2️⃣ Extraer *último bloque* después de "resultado"
+  const parts = normalized.split("resultado").map(p => p.trim()).filter(Boolean);
+  const target = parts.length > 0 ? parts[parts.length - 1] : normalized;
+
+  if (!target) return NaN;
+
+  const words = target.split(/\s+/);
+
+  // Diccionarios
+  const UNIDADES: Record<string, number> = {
+    cero: 0, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, sinco: 5,
+    seis: 6, siete: 7, ocho: 8, nueve: 9,
+  };
+
+  const DIEZES: Record<string, number> = {
+    diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
+    dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19,
+  };
+
+  const VEINTES: Record<string, number> = {
+    veinte: 20,
+    veintiuno: 21, veintiun: 21,
+    veintidos: 22, veintitres: 23, veinticuatro: 24, veinticinco: 25,
+    veintiseis: 26, veintisiete: 27, veintiocho: 28, veintinueve: 29,
+  };
+
+  const DECENAS: Record<string, number> = {
+    treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60,
+    setenta: 70, ochenta: 80, noventa: 90,
+  };
+
+  const CENTENAS: Record<string, number> = {
+    cien: 100, ciento: 100, doscientos: 200, trescientos: 300,
+    cuatrocientos: 400, quinientos: 500, seiscientos: 600,
+    setecientos: 700, ochocientos: 800, novecientos: 900,
+  };
+
+  // 3️⃣ Parse palabra por palabra
   let total = 0;
-  let current = 0;
 
-  for (const word of words) {
-    if (UNIDADES[word] !== undefined) {
-      current += UNIDADES[word];
-    } else if (DIEZ_A_DIECINUEVE[word] !== undefined) {
-      current += DIEZ_A_DIECINUEVE[word];
-    } else if (DECENAS[word] !== undefined) {
-      current += DECENAS[word];
-    } else if (CENTENAS[word] !== undefined) {
-      current += CENTENAS[word];
-    }
+  for (const w of words) {
+    if (UNIDADES[w] !== undefined) total += UNIDADES[w];
+    else if (DIEZES[w] !== undefined) total += DIEZES[w];
+    else if (VEINTES[w] !== undefined) total += VEINTES[w];
+    else if (DECENAS[w] !== undefined) total += DECENAS[w];
+    else if (CENTENAS[w] !== undefined) total += CENTENAS[w];
   }
 
-  total += current;
-
-  // Si no reconocimos nada, devolvemos NaN (no null)
-  return total > 0 ? total : NaN;
+  return Number.isFinite(total) ? total : NaN;
 }

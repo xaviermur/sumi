@@ -43,7 +43,6 @@ export default function TimeAttackGameScreen({
     phase,
     timeLeft,
     listening,
-    supported,
     micState,
     startGame,
     resetGame,
@@ -65,7 +64,6 @@ export default function TimeAttackGameScreen({
       feedbackId={feedbackId}
       micState={micState}
       listening={listening}
-      supported={supported}
       correct={correct}
       wrong={wrong}
       elapsed={`${timeLeft}s`}

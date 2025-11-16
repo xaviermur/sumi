@@ -27,7 +27,6 @@ export default function CustomModeGameScreen({
     phase,
     timeLeft,
     listening,
-    supported,
     micState,
     startGame,
     resetGame,
@@ -48,7 +47,6 @@ export default function CustomModeGameScreen({
       feedbackId={feedbackId}
       micState={micState}
       listening={listening}
-      supported={supported}
       correct={correct}
       wrong={wrong}
       elapsed={`${timeLeft}s`}

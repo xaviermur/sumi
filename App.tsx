@@ -6,6 +6,7 @@ import TimeAttackGameScreen from "./src/screens/TimeAttackGameScreen";
 import CustomModeGameScreen from "./src/screens/CustomModeGameScreen";
 import RecordsScreen from "./src/screens/RecordsScreen";
 import HelpScreen, { HelpSectionId } from "./src/screens/HelpScreen";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 type GameOptions = {
   mode: "free" | "timeattack" | "custom";
@@ -48,57 +49,61 @@ export default function App() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* 🏠 MENÚ PRINCIPAL */}
-      {screen === "menu" && (
-        <MenuScreen
-          onStartGame={handleStartGame}
-          onShowRecords={handleShowRecords}
-          onOpenHelp={() => handleOpenHelp("intro")}
-        />
-      )}
-
-      {/* 🏆 RÉCORDS */}
-      {screen === "records" && <RecordsScreen onBack={() => setScreen("menu")} />}
-
-      {/* 🆘 AYUDA */}
-      {screen === "help" && (
-        <HelpScreen
-          onBack={handleBackFromHelp} // 🔙 vuelve a la anterior
-          startSection={helpSection}
-        />
-      )}
-
-      {/* 🎮 JUEGO */}
-      {screen === "game" && options && (
-        <>
-          {options.mode === "free" && (
-            <FreeModeGameScreen
-              onExit={handleExitGame}
-              duration={options.duration}
-              difficulty={options.difficulty}
-              onOpenHelp={handleOpenHelp}
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
+          {/* 🏠 MENÚ PRINCIPAL */}
+          {screen === "menu" && (
+            <MenuScreen
+              onStartGame={handleStartGame}
+              onShowRecords={handleShowRecords}
+              onOpenHelp={() => handleOpenHelp("intro")}
             />
           )}
 
-          {options.mode === "timeattack" && (
-            <TimeAttackGameScreen
-              onExit={handleExitGame}
-              difficulty={options.difficulty}
-              onOpenHelp={handleOpenHelp}
+          {/* 🏆 RÉCORDS */}
+          {screen === "records" && <RecordsScreen onBack={() => setScreen("menu")} />}
+
+          {/* 🆘 AYUDA */}
+          {screen === "help" && (
+            <HelpScreen
+              onBack={handleBackFromHelp} // 🔙 vuelve a la anterior
+              startSection={helpSection}
             />
           )}
 
-          {options.mode === "custom" && (
-            <CustomModeGameScreen
-              onExit={handleExitGame}
-              duration={options.duration}
-              customOptions={options.customOptions}
-              onOpenHelp={handleOpenHelp}
-            />
+          {/* 🎮 JUEGO */}
+          {screen === "game" && options && (
+            <>
+              {options.mode === "free" && (
+                <FreeModeGameScreen
+                  onExit={handleExitGame}
+                  duration={options.duration}
+                  difficulty={options.difficulty}
+                  onOpenHelp={handleOpenHelp}
+                />
+              )}
+
+              {options.mode === "timeattack" && (
+                <TimeAttackGameScreen
+                  onExit={handleExitGame}
+                  difficulty={options.difficulty}
+                  onOpenHelp={handleOpenHelp}
+                />
+              )}
+
+              {options.mode === "custom" && (
+                <CustomModeGameScreen
+                  onExit={handleExitGame}
+                  duration={options.duration}
+                  customOptions={options.customOptions}
+                  onOpenHelp={handleOpenHelp}
+                />
+              )}
+            </>
           )}
-        </>
-      )}
-    </View>
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

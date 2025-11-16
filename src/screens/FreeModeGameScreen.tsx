@@ -33,7 +33,6 @@ export default function FreeModeGameScreen({
     phase,
     timeLeft,
     listening,
-    supported,
     micState,
     startGame,
     resetGame,
@@ -75,7 +74,6 @@ export default function FreeModeGameScreen({
       feedbackId={feedbackId}
       micState={micState}
       listening={listening}
-      supported={supported}
       correct={correct}
       wrong={wrong}
       elapsed={`${timeLeft}s`}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, Animated } from "react-native";
+import { View, Text, Animated, useWindowDimensions } from "react-native";
 import LottieView from "lottie-react-native";
 import LastResultPanel from "./LastResultPanel";
 import { Operation } from "../core/types/operation";
@@ -22,7 +22,11 @@ export default function RightPanel({
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const bgColor = useRef(new Animated.Value(0)).current;
+
   const [effect, setEffect] = useState<"success" | "error" | null>(null);
+
+  const { height, width } = useWindowDimensions();
+  const isSmallScreen = height < 700;
 
   const aStr = operation.num1.toString();
   const bStr = operation.num2.toString();
@@ -30,19 +34,20 @@ export default function RightPanel({
   const paddedA = aStr.padStart(maxLen, " ");
   const paddedB = bStr.padStart(maxLen, " ");
 
-  // Animación de entrada de operación
+  // Animación entrada operación
   useEffect(() => {
     fadeAnim.setValue(0);
     slideAnim.setValue(30);
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: false }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: false }),
     ]).start();
   }, [operation]);
 
-  // Animación visual de feedback
+  // Feedback animado
   useEffect(() => {
     if (!feedback) return;
+
     const isCorrect = feedback.startsWith("✅");
     setEffect(isCorrect ? "success" : "error");
     bgColor.setValue(isCorrect ? 1 : -1);
@@ -51,7 +56,7 @@ export default function RightPanel({
 
     const timeout = setTimeout(() => setEffect(null), 1200);
     return () => clearTimeout(timeout);
-  }, [feedbackId]); // 👈 importante, para que se repita aunque el feedback sea igual
+  }, [feedbackId]);
 
   const interpolatedBg = bgColor.interpolate({
     inputRange: [-1, 0, 1],
@@ -61,7 +66,7 @@ export default function RightPanel({
   return (
     <Animated.View
       style={{
-        flex: 2,
+        flex: 1,
         backgroundColor: interpolatedBg,
         borderRadius: 12,
         padding: 20,
@@ -69,42 +74,44 @@ export default function RightPanel({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
+        justifyContent: "flex-start",
         opacity: fadeAnim,
         transform: [{ translateY: slideAnim }],
       }}
     >
-      {/* Mic status */}
+      {/* Estado micro */}
       {micState !== "idle" && (
-        <View style={{ position: "absolute", top: 10, alignItems: "center" }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color:
-                micState === "waiting"
-                  ? "green"
-                  : micState === "listening"
-                  ? "#e6b800"
-                  : "#e67e22",
-            }}
-          >
-            {micState === "waiting"
-              ? "🎤 Esperando..."
-              : micState === "listening"
-              ? "🎧 Escuchando..."
-              : "🧠 Procesando..."}
-          </Text>
-        </View>
+        <Text
+          style={{
+            fontSize: isSmallScreen ? 14 : 18,
+            fontWeight: "600",
+            marginBottom: 10,
+            color:
+              micState === "waiting"
+                ? "green"
+                : micState === "listening"
+                ? "#e6b800"
+                : "#e67e22",
+          }}
+        >
+          {micState === "waiting"
+            ? "🎤 Esperando..."
+            : micState === "listening"
+            ? "🎧 Escuchando..."
+            : "🧠 Procesando..."}
+        </Text>
       )}
 
-      {/* Operación */}
-      <View style={{ alignItems: "flex-end" }}>
-        <Text style={{ fontSize: 48, fontFamily: "monospace" }}>{paddedA}</Text>
-        <Text style={{ fontSize: 48, fontFamily: "monospace" }}>
-          {`${operation.opType === "sum" ? "+" : "-"} ${paddedB}`}
+      {/* Operación centrada */}
+      <View style={{ alignItems: "flex-end", marginTop: 10 }}>
+        <Text style={{ fontSize: isSmallScreen ? 38 : 48, fontFamily: "monospace" }}>
+          {paddedA}
         </Text>
+
+        <Text style={{ fontSize: isSmallScreen ? 38 : 48, fontFamily: "monospace" }}>
+          {(operation.opType === "sum" ? "+" : "-") + " " + paddedB}
+        </Text>
+
         <View
           style={{
             width: "100%",
@@ -115,33 +122,29 @@ export default function RightPanel({
         />
       </View>
 
-      {/* Feedback */}
+      {/* Feedback flotante (sin cortar) */}
       {feedback && (
         <Text
           style={{
-            position: "absolute",
-            bottom: 30,
-            fontSize: 36,
+            fontSize: isSmallScreen ? 26 : 36,
             fontWeight: "700",
             color: feedback.startsWith("✅") ? "#2e7d32" : "#c62828",
-            textShadowColor: "rgba(0,0,0,0.2)",
-            textShadowOffset: { width: 1, height: 1 },
-            textShadowRadius: 2,
+            marginTop: 20,
+            marginBottom: 10,
           }}
         >
           {feedback}
         </Text>
       )}
 
-      {/* 🎉 Animación Lottie */}
+      {/* Lottie animación (posición segura, sin % !!!) */}
       {effect && (
         <View
           style={{
-            position: "absolute",
-            top: "20%",
-            width: 300,
-            height: 300,
-            pointerEvents: "none",
+            marginTop: 10,
+            marginBottom: 10,
+            height: isSmallScreen ? 180 : 260,
+            width: isSmallScreen ? 180 : 260,
           }}
         >
           <LottieView
@@ -157,7 +160,11 @@ export default function RightPanel({
       )}
 
       {/* Último resultado */}
-      {lastResult && <LastResultPanel lastResult={lastResult} />}
+      {lastResult && (
+        <View style={{ marginTop: 10 }}>
+          <LastResultPanel lastResult={lastResult} />
+        </View>
+      )}
     </Animated.View>
   );
 }

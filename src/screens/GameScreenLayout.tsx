@@ -1,39 +1,48 @@
-// src/screens/GameScreenLayout.tsx
 import React from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, useWindowDimensions } from "react-native";
 import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
 import SummaryPanel from "../components/SummaryPanel";
 import type { ScoreRecord } from "../core/logic/recordsStorage";
 import type { MicState } from "../hooks/useSpeechRecognition";
-import { HelpSectionId } from "./HelpScreen";
+import type { Operation } from "../core/types/operation";
+import type { HelpSectionId } from "./HelpScreen";
+
+// Tipo del resultado de una operación en la partida
+interface GameResult extends Operation {
+  given: number;
+  success: boolean;
+  points: number;
+  timeTaken?: number;
+}
 
 interface GameScreenLayoutProps {
-  // 🔹 Datos base del juego
+  // Datos base
   mode: "free" | "timeattack" | "custom";
   phase: "ready" | "running" | "finished";
-  operation: any;
+  operation: Operation;
   feedback: string | null;
   feedbackId: number;
   micState: MicState;
   listening: boolean;
-  supported: boolean;
   correct: number;
   wrong: number;
-  elapsed: string; // mostrar el tiempo
+  elapsed: string;
   totalScore: number;
-  results: any[];
+  results: GameResult[];
+
+  // Records / resumen
   topRecords?: ScoreRecord[];
   isTop5?: boolean;
 
-  // 🔹 Funciones
+  // Callbacks
   onStartGame: () => void;
   onReset: () => void;
   onExit: () => void;
   startListening: () => void;
   stopListening: () => void;
 
-  // 🔹 Opcionales
+  // Opcionales
   difficulty?: number;
   onIncreaseLevel?: () => void;
   onDecreaseLevel?: () => void;
@@ -43,121 +52,118 @@ interface GameScreenLayoutProps {
   onOpenHelp: (section?: HelpSectionId) => void;
 }
 
-export default function GameScreenLayout({
-  mode,
-  phase,
-  operation,
-  feedback,
-  feedbackId,
-  micState,
-  listening,
-  supported,
-  correct,
-  wrong,
-  elapsed,
-  totalScore,
-  results,
-  topRecords,
-  isTop5,
-  onStartGame,
-  onReset,
-  onExit,
-  startListening,
-  stopListening,
-  difficulty,
-  onIncreaseLevel,
-  onDecreaseLevel,
-  titleSummary = "⏹️ Fin de la ronda",
-  durationSeconds,
-  onOpenHelp,
-}: GameScreenLayoutProps) {
+export default function GameScreenLayout(props: GameScreenLayoutProps) {
+  const {
+    mode,
+    phase,
+    operation,
+    feedback,
+    feedbackId,
+    micState,
+    listening,
+    correct,
+    wrong,
+    elapsed,
+    totalScore,
+    results,
+    topRecords,
+    isTop5,
+    onStartGame,
+    onReset,
+    onExit,
+    startListening,
+    stopListening,
+    difficulty,
+    onIncreaseLevel,
+    onDecreaseLevel,
+    titleSummary = "⏹️ Fin de la ronda",
+    durationSeconds,
+    onOpenHelp,
+  } = props;
+
   const wrongAnswers = results.filter((r) => !r.success);
+  const { width } = useWindowDimensions();
+
+  // 👉 Si el ancho es pequeño (iPhone / iPad mini vertical):
+  const useVerticalLayout = width < 820;
 
   return (
     <View
       style={{
         flex: 1,
-        flexDirection: "row",
-        backgroundColor: "#f2f2f2",
+        flexDirection: useVerticalLayout ? "column" : "row",
         padding: 20,
+        gap: 10,
       }}
     >
-      {/* 🧩 PANEL IZQUIERDO */}
-      <LeftPanel
-        listening={listening}
-        supported={supported}
-        startListening={startListening}
-        stopListening={stopListening}
-        correct={correct}
-        wrong={wrong}
-        elapsed={elapsed}
-        onReset={onReset}
-        onExit={onExit}
-        mode={mode}
-        difficulty={difficulty}
-        phase={phase}
-        totalScore={totalScore}
-        onStartGame={onStartGame}
-        autoStartLabel="▶ Iniciar (activa micro)"
-        onIncreaseLevel={onIncreaseLevel}
-        onDecreaseLevel={onDecreaseLevel}
-        onOpenHelp={() => onOpenHelp("howToAnswer")}
-      />
-
-      {/* 🧮 PANEL DERECHO */}
-      {phase === "running" && (
-        <RightPanel
-          operation={operation}
-          micState={micState}
-          feedback={feedback}
-          feedbackId={feedbackId}
-          lastResult={results[results.length - 1]}
+      {/* PANEL IZQUIERDO */}
+      <View
+        style={{
+          width: useVerticalLayout ? "100%" : 260,
+          flexShrink: 0,
+        }}
+      >
+        <LeftPanel
+          listening={listening}
+          startListening={startListening}
+          stopListening={stopListening}
+          correct={correct}
+          wrong={wrong}
+          elapsed={elapsed}
+          onReset={onReset}
+          onExit={onExit}
+          mode={mode}
+          difficulty={difficulty}
+          phase={phase}
+          totalScore={totalScore}
+          onStartGame={onStartGame}
+          autoStartLabel="▶ Iniciar (activa micro)"
+          onIncreaseLevel={onIncreaseLevel}
+          onDecreaseLevel={onDecreaseLevel}
+          onOpenHelp={() => onOpenHelp("howToAnswer")}
         />
-      )}
+      </View>
 
-      {/* 🧾 PANEL FINAL */}
-      {phase === "finished" && (
-        <View
-          style={{
-            flex: 2,
-            backgroundColor: "#fff",
-            borderRadius: 12,
-            padding: 20,
-            marginLeft: 10,
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-          }}
-        >
-          <SummaryPanel
-            title={titleSummary}
-            correct={correct}
-            wrong={wrong}
-            durationSeconds={durationSeconds}
-            totalScore={totalScore}
-            topRecords={topRecords}
-            isTop5={isTop5}
-            onRetry={onReset}
-            onExit={onExit}
+      {/* PANEL DERECHO */}
+      <View style={{ flex: 1 }}>
+        {phase === "running" && (
+          <RightPanel
+            operation={operation}
+            micState={micState}
+            feedback={feedback}
+            feedbackId={feedbackId}
+            lastResult={results[results.length - 1] ?? null}
           />
+        )}
 
-          {wrongAnswers.length > 0 && (
-            <View style={{ marginTop: 20 }}>
-              <Text
-                style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}
-              >
-                ❌ Operaciones falladas
-              </Text>
-              <ScrollView
-                style={{
-                  maxHeight: 250,
-                  borderWidth: 1,
-                  borderColor: "#ddd",
-                  borderRadius: 8,
-                  padding: 10,
-                  backgroundColor: "#fafafa",
-                }}
-              >
+        {phase === "finished" && (
+          <ScrollView
+            style={{
+              flex: 1,
+              backgroundColor: "#fff",
+              borderRadius: 12,
+              padding: 20,
+            }}
+          >
+            <SummaryPanel
+              title={titleSummary}
+              correct={correct}
+              wrong={wrong}
+              durationSeconds={durationSeconds}
+              totalScore={totalScore}
+              topRecords={topRecords}
+              isTop5={isTop5}
+              onRetry={onReset}
+              onExit={onExit}
+            />
+
+            {wrongAnswers.length > 0 && (
+              <View style={{ marginTop: 20 }}>
+                <Text
+                  style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}
+                >
+                  ❌ Operaciones falladas
+                </Text>
                 {wrongAnswers.map((r, i) => (
                   <Text key={i} style={{ fontSize: 18, marginBottom: 6 }}>
                     {r.num1}{" "}
@@ -175,11 +181,11 @@ export default function GameScreenLayout({
                     </Text>
                   </Text>
                 ))}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-      )}
+              </View>
+            )}
+          </ScrollView>
+        )}
+      </View>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, useWindowDimensions } from "react-native";
 
 interface ScoreRecord {
   score: number;
@@ -16,8 +16,8 @@ interface SummaryPanelProps {
   totalScore?: number;
   onRetry: () => void;
   onExit: () => void;
-  topRecords?: ScoreRecord[]; // 🆕 top 5
-  isTop5?: boolean;           // 🆕 si el jugador entró al ranking
+  topRecords?: ScoreRecord[];
+  isTop5?: boolean;
 }
 
 export default function SummaryPanel({
@@ -33,32 +33,32 @@ export default function SummaryPanel({
 }: SummaryPanelProps) {
   const total = correct + wrong;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
-  const medalIcons = ["🥇", "🥈", "🥉"];
+
+  const { height, width } = useWindowDimensions();
+  const isSmall = height < 700;
 
   return (
     <View
       style={{
-        flex: 1,
         backgroundColor: "#fff",
         borderRadius: 16,
         padding: 20,
-        justifyContent: "space-between",
       }}
     >
-      {/* 🧾 CABECERA */}
-      <View style={{ alignItems: "center", marginBottom: 10 }}>
-        <Text style={{ fontSize: 30, fontWeight: "800", color: "#333" }}>
+      {/* CABECERA */}
+      <View style={{ alignItems: "center", marginBottom: 12 }}>
+        <Text style={{ fontSize: isSmall ? 24 : 30, fontWeight: "800", color: "#333" }}>
           {title}
         </Text>
 
         {typeof durationSeconds === "number" && (
-          <Text style={{ fontSize: 18, color: "#777", marginTop: 4 }}>
+          <Text style={{ fontSize: 16, color: "#777", marginTop: 4 }}>
             ⏱️ Duración: {formatSec(durationSeconds)}
           </Text>
         )}
       </View>
 
-      {/* 📊 RESULTADOS */}
+      {/* RESULTADOS */}
       <View
         style={{
           flexDirection: "row",
@@ -67,33 +67,33 @@ export default function SummaryPanel({
         }}
       >
         <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 36, fontWeight: "700", color: "#4caf50" }}>
+          <Text style={{ fontSize: isSmall ? 26 : 36, fontWeight: "700", color: "#4caf50" }}>
             ✅ {correct}
           </Text>
           <Text style={{ color: "#666" }}>Correctas</Text>
         </View>
 
         <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 36, fontWeight: "700", color: "#f44336" }}>
+          <Text style={{ fontSize: isSmall ? 26 : 36, fontWeight: "700", color: "#f44336" }}>
             ❌ {wrong}
           </Text>
           <Text style={{ color: "#666" }}>Erróneas</Text>
         </View>
 
         <View style={{ alignItems: "center" }}>
-          <Text style={{ fontSize: 30, fontWeight: "700", color: "#2196f3" }}>
+          <Text style={{ fontSize: isSmall ? 22 : 30, fontWeight: "700", color: "#2196f3" }}>
             🎯 {accuracy}%
           </Text>
           <Text style={{ color: "#666" }}>Precisión</Text>
         </View>
       </View>
 
-      {/* ⭐ PUNTUACIÓN TOTAL */}
+      {/* PUNTUACIÓN */}
       {typeof totalScore === "number" && (
-        <View style={{ alignItems: "center", marginTop: 15 }}>
+        <View style={{ alignItems: "center", marginTop: 12 }}>
           <Text
             style={{
-              fontSize: 28,
+              fontSize: isSmall ? 24 : 28,
               fontWeight: "800",
               color: "#ff9800",
             }}
@@ -107,7 +107,7 @@ export default function SummaryPanel({
                 marginTop: 6,
                 color: "#ff9800",
                 fontWeight: "600",
-                fontSize: 18,
+                fontSize: isSmall ? 16 : 18,
               }}
             >
               🏆 ¡Nuevo récord en el Top 5!
@@ -116,10 +116,10 @@ export default function SummaryPanel({
         </View>
       )}
 
-      {/* 🏆 CLASIFICACIÓN TOP5 */}
+      {/* TOP 5 */}
       {topRecords && topRecords.length > 0 && (
         <View style={{ marginTop: 20 }}>
-          <Text style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}>
+          <Text style={{ fontSize: isSmall ? 18 : 20, fontWeight: "700", marginBottom: 10 }}>
             🏆 Mejores puntuaciones
           </Text>
 
@@ -138,24 +138,23 @@ export default function SummaryPanel({
                   paddingVertical: 3,
                 }}
               >
-                {/* Icono y número pegados */}
+                {/* Icono */}
                 <Text
                   style={{
-                    fontSize: 18,
+                    fontSize: isSmall ? 16 : 18,
                     color,
                     fontWeight: index < 3 ? "700" : "400",
-                    marginRight: 8, // pequeño margen solo
-                    width: 28, // mismo ancho visual
+                    width: 28,
                     textAlign: "center",
                   }}
                 >
                   {label}
                 </Text>
 
-                {/* Puntuación */}
+                {/* Score */}
                 <Text
                   style={{
-                    fontSize: 18,
+                    fontSize: isSmall ? 16 : 18,
                     fontWeight: "500",
                     color: "#222",
                   }}
@@ -168,12 +167,12 @@ export default function SummaryPanel({
         </View>
       )}
 
-      {/* 🔘 BOTONES */}
+      {/* BOTONES */}
       <View
         style={{
           flexDirection: "row",
           justifyContent: "space-evenly",
-          marginTop: 25,
+          marginTop: 28,
         }}
       >
         <TouchableOpacity
@@ -185,7 +184,7 @@ export default function SummaryPanel({
             borderRadius: 10,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 18 }}>🔁 Reintentar</Text>
+          <Text style={{ color: "#fff", fontSize: isSmall ? 16 : 18 }}>🔁 Reintentar</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -197,7 +196,7 @@ export default function SummaryPanel({
             borderRadius: 10,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 18 }}>🏠 Salir</Text>
+          <Text style={{ color: "#fff", fontSize: isSmall ? 16 : 18 }}>🏠 Salir</Text>
         </TouchableOpacity>
       </View>
     </View>

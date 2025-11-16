@@ -1,29 +1,64 @@
 import React, { useState } from "react";
-import { View, Text, Button, TouchableOpacity, Switch } from "react-native";
-import { Ionicons } from "@expo/vector-icons"; // 👈 si usas Expo
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Switch,
+  ScrollView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
+// ─────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────
+
+export type MenuMode = "free" | "timeattack" | "custom";
+
+export interface CustomOptions {
+  type: ("sum" | "sub")[];
+  range1: [number, number];
+  range2: [number, number];
+  overflowDigits: [number, number];
+  resultRange: [number, number];
+}
+
+export interface StartGameOptions {
+  mode: MenuMode | null;
+  difficulty?: number;
+  duration: number;
+  customOptions?: CustomOptions;
+}
+
+export interface MenuScreenProps {
+  onStartGame: (opts: StartGameOptions) => void;
+  onShowRecords: () => void;
+  onOpenHelp: () => void;
+}
+
+// ─────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────
 
 export default function MenuScreen({
   onStartGame,
-  onShowRecords, // 🆕 nuevo prop
-  onOpenHelp
-}: {
-  onStartGame: (options?: any) => void;
-  onShowRecords: () => void; // 🆕 callback
-  onOpenHelp: () => void;
-}) {
-  const [selectedMode, setSelectedMode] = useState<
-    "free" | "timed" | "levels" | "custom" | null
-  >(null);
+  onShowRecords,
+  onOpenHelp,
+}: MenuScreenProps) {
+  const [selectedMode, setSelectedMode] = useState<MenuMode | null>(null);
   const [difficulty, setDifficulty] = useState<number>(1);
   const [duration, setDuration] = useState<number>(60);
 
-  // ⚙️ Custom config
   const [sumEnabled, setSumEnabled] = useState(true);
   const [subEnabled, setSubEnabled] = useState(false);
   const [carryEnabled, setCarryEnabled] = useState(false);
+
   const [selectedOperatorType, setSelectedOperatorType] = useState<
     "small" | "medium" | "large" | "xlarge" | "unlimited"
   >("small");
+
+  // ----------------------------------
+  // CONFIG RANGOS
+  // ----------------------------------
 
   const operatorRanges: Record<
     "small" | "medium" | "large" | "xlarge" | "unlimited",
@@ -47,6 +82,10 @@ export default function MenuScreen({
     unlimited: 3,
   };
 
+  // ----------------------------------
+  // 🚀 handleStart
+  // ----------------------------------
+
   const handleStart = () => {
     if (selectedMode === "custom") {
       const types: ("sum" | "sub")[] = [];
@@ -56,11 +95,13 @@ export default function MenuScreen({
       const baseRange = operatorRanges[selectedOperatorType];
       const overflowMin = overflowMinByType[selectedOperatorType];
 
-      const customOptions = {
+      const customOptions: CustomOptions = {
         type: types.length ? types : ["sum"],
         range1: baseRange,
         range2: baseRange,
-        overflowDigits: carryEnabled ? [overflowMin, overflowMin] : [0, 0],
+        overflowDigits: carryEnabled
+          ? [overflowMin, overflowMin]
+          : [0, 0],
         resultRange: [baseRange[0], baseRange[1] * 2],
       };
 
@@ -69,6 +110,7 @@ export default function MenuScreen({
         duration,
         customOptions,
       });
+
       return;
     }
 
@@ -79,28 +121,30 @@ export default function MenuScreen({
     });
   };
 
+  // ----------------------------------
+  // UI
+  // ----------------------------------
+
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#f2f2f2",
-        justifyContent: "center",
-        alignItems: "center",
+    <ScrollView
+      contentContainerStyle={{
         padding: 20,
+        alignItems: "center",
+        backgroundColor: "#f2f2f2",
       }}
     >
-
+      {/* Título */}
       <Text style={{ fontSize: 32, fontWeight: "700", marginBottom: 30 }}>
         🧮 CEREBRiN
       </Text>
 
-      {/* 🔹 Botón de ayuda (arriba derecha) */}
+      {/* Botón ayuda */}
       <View
         style={{
           position: "absolute",
           top: 40,
           right: 20,
-          zIndex: 10,
+          zIndex: 20,
         }}
       >
         <TouchableOpacity onPress={onOpenHelp}>
@@ -108,22 +152,20 @@ export default function MenuScreen({
         </TouchableOpacity>
       </View>
 
-      {/* 🎮 Modo de juego */}
+      {/* Selección de modo */}
       <View
         style={{
           backgroundColor: "#fff",
           borderRadius: 12,
           padding: 20,
           width: "90%",
-          shadowColor: "#000",
-          shadowOpacity: 0.1,
-          shadowRadius: 3,
           marginBottom: 25,
         }}
       >
         <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
           🎮 Modo de juego
         </Text>
+
         {[
           { key: "free", label: "Modo libre (1 o 2 minutos)" },
           { key: "timeattack", label: "Contrarreloj (1 minuto fijo)" },
@@ -131,7 +173,7 @@ export default function MenuScreen({
         ].map((opt) => (
           <TouchableOpacity
             key={opt.key}
-            onPress={() => setSelectedMode(opt.key as any)}
+            onPress={() => setSelectedMode(opt.key as MenuMode)}
             style={{
               padding: 10,
               borderRadius: 8,
@@ -152,7 +194,7 @@ export default function MenuScreen({
         ))}
       </View>
 
-      {/* ⚙️ Dificultad */}
+      {/* Dificultad */}
       {selectedMode !== "custom" && (
         <View
           style={{
@@ -160,15 +202,13 @@ export default function MenuScreen({
             borderRadius: 12,
             padding: 20,
             width: "90%",
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
             marginBottom: 25,
           }}
         >
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
             ⚙️ Dificultad
           </Text>
+
           {[1, 2, 3, 4, 5].map((n) => (
             <TouchableOpacity
               key={n}
@@ -193,7 +233,7 @@ export default function MenuScreen({
         </View>
       )}
 
-      {/* ⏱️ Duración (solo libre o custom) */}
+      {/* Duración */}
       {(selectedMode === "free" || selectedMode === "custom") && (
         <View
           style={{
@@ -201,15 +241,13 @@ export default function MenuScreen({
             borderRadius: 12,
             padding: 20,
             width: "90%",
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
             marginBottom: 25,
           }}
         >
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
             ⏱️ Duración
           </Text>
+
           {[60, 120].map((sec) => (
             <TouchableOpacity
               key={sec}
@@ -234,7 +272,7 @@ export default function MenuScreen({
         </View>
       )}
 
-      {/* ⚙️ Configuración personalizada */}
+      {/* Config custom */}
       {selectedMode === "custom" && (
         <View
           style={{
@@ -242,9 +280,6 @@ export default function MenuScreen({
             borderRadius: 12,
             padding: 20,
             width: "90%",
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
             marginBottom: 25,
           }}
         >
@@ -252,63 +287,68 @@ export default function MenuScreen({
             ⚙️ Configuración personalizada
           </Text>
 
-          {/* Tipo de operaciones */}
-          <Text style={{ fontSize: 18, fontWeight: "500", marginBottom: 10 }}>
-            Tipo de operaciones
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+          {/* Sumas / Restas */}
+          <View
+            style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}
+          >
             <Switch value={sumEnabled} onValueChange={setSumEnabled} />
             <Text style={{ marginLeft: 8, fontSize: 16 }}>Sumas</Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 15 }}>
+
+          <View
+            style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}
+          >
             <Switch value={subEnabled} onValueChange={setSubEnabled} />
             <Text style={{ marginLeft: 8, fontSize: 16 }}>Restas</Text>
           </View>
 
           {/* Llevadas */}
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+          <View
+            style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}
+          >
             <Switch value={carryEnabled} onValueChange={setCarryEnabled} />
             <Text style={{ marginLeft: 8, fontSize: 16 }}>Incluir llevadas</Text>
           </View>
 
-          {/* Operadores */}
+          {/* Tipos de operador */}
           <Text style={{ fontSize: 18, fontWeight: "500", marginBottom: 10 }}>
             Tipo de operadores
           </Text>
-          {[
-            { key: "small", label: "Unidades (1–9)" },
-            { key: "medium", label: "Medianos (10–20)" },
-            { key: "large", label: "Mayores (20–50)" },
-            { key: "xlarge", label: "Más grandes (50–100)" },
-            { key: "unlimited", label: "Sin límite (100–1000)" },
-          ].map((opt) => (
+
+          {(
+            [
+              ["small", "Unidades (1–9)"],
+              ["medium", "Medianos (10–20)"],
+              ["large", "Mayores (20–50)"],
+              ["xlarge", "Más grandes (50–100)"],
+              ["unlimited", "Sin límite (100–1000)"],
+            ] as const
+          ).map(([key, label]) => (
             <TouchableOpacity
-              key={opt.key}
-              onPress={() =>
-                setSelectedOperatorType(opt.key as typeof selectedOperatorType)
-              }
+              key={key}
+              onPress={() => setSelectedOperatorType(key)}
               style={{
                 padding: 10,
                 borderRadius: 8,
                 marginBottom: 6,
                 backgroundColor:
-                  selectedOperatorType === opt.key ? "#3b82f6" : "#eee",
+                  selectedOperatorType === key ? "#3b82f6" : "#eee",
               }}
             >
               <Text
                 style={{
                   fontSize: 16,
-                  color: selectedOperatorType === opt.key ? "#fff" : "#333",
+                  color: selectedOperatorType === key ? "#fff" : "#333",
                 }}
               >
-                {opt.label}
+                {label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* 🚀 Botón Comenzar */}
+      {/* Botón comenzar */}
       <TouchableOpacity
         onPress={handleStart}
         disabled={!selectedMode}
@@ -325,7 +365,7 @@ export default function MenuScreen({
         </Text>
       </TouchableOpacity>
 
-      {/* 🏆 Ver récords */}
+      {/* Ver récords */}
       <TouchableOpacity
         onPress={onShowRecords}
         style={{
@@ -339,6 +379,6 @@ export default function MenuScreen({
           🏆 Ver récords
         </Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
