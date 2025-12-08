@@ -1,5 +1,6 @@
 // src/core/logic/recordsStorage.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { GameMode } from "../types/game";
 
 export interface ScoreRecord {
   score: number;
@@ -14,7 +15,7 @@ const STORAGE_KEY = "cerebrin_records_v1";
 
 /** Genera la clave para este modo/configuración */
 export function getModeKey(
-  mode: "free" | "timeattack",
+  mode: GameMode,
   difficulty: number,
   duration?: number
 ): ModeKey {

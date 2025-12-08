@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useGameCore } from "../hooks/useGameCore";
 import GameScreenLayout from "./GameScreenLayout";
 import { HelpSectionId } from "./HelpScreen";
@@ -7,7 +7,7 @@ interface CustomModeGameScreenProps {
   onExit: () => void;
   duration?: number;
   customOptions: any;
-  onOpenHelp: (section?: HelpSectionId) => void; // ✅ nuevo
+  onOpenHelp: (section?: HelpSectionId) => void;
 }
 
 export default function CustomModeGameScreen({
@@ -37,6 +37,15 @@ export default function CustomModeGameScreen({
     customOptions,
     duration,
   });
+
+  // 🎤 Auto–activar voz cuando phase === "running"
+  useEffect(() => {
+    if (phase === "running") {
+      startListening();
+    } else {
+      stopListening();
+    }
+  }, [phase, startListening, stopListening]);
 
   return (
     <GameScreenLayout

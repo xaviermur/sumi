@@ -1,14 +1,14 @@
 // src/hooks/useGameCore.ts
 import { useEffect, useRef, useState } from "react";
-import { parseSpanishNumber } from "../utils/parseSpanishNumber";
 import { generateOperation } from "../core/logic/generateOperation";
 import { calculateScore } from "../core/logic/calculateScore";
-import { MicState, useSpeechRecognition } from "./useSpeechRecognition";
+import { useWhisperRecognition } from "./useWhisperRecognition";
 
-import type { Operation, OperationType, GenerateOperationOptions } from "../core/types/operation";
+import type { Operation, GenerateOperationOptions } from "../core/types/operation";
+import type { MicState } from "@/core/types/audio";
 
 // --------------------------------------------------
-// Tipos propios del hook
+// Tipos
 // --------------------------------------------------
 
 export interface ResultEntry extends Operation {
@@ -46,7 +46,7 @@ export interface UseGameCoreReturn {
   micState: MicState;
   listening: boolean;
   startGame: () => void;
-  startListening: () => void;
+  startListening: () => void;   // sigue existiendo por compatibilidad UI
   stopListening: () => void;
   resetGame: () => void;
 }
@@ -62,35 +62,40 @@ export function useGameCore({
   customOptions,
   onFinish,
 }: UseGameCoreOptions): UseGameCoreReturn {
+
   const [operation, setOperation] = useState<Operation>(
     generateOperation(customOptions ?? { difficulty })
   );
 
   const [phase, setPhase] = useState<"ready" | "running" | "finished">("ready");
-  const [correct, setCorrect] = useState<number>(0);
-  const [wrong, setWrong] = useState<number>(0);
+  const [correct, setCorrect] = useState(0);
+  const [wrong, setWrong] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [feedbackId, setFeedbackId] = useState<number>(0);
-  const [totalScore, setTotalScore] = useState<number>(0);
+  const [feedbackId, setFeedbackId] = useState(0);
+  const [totalScore, setTotalScore] = useState(0);
   const [results, setResults] = useState<ResultEntry[]>([]);
-  const [timeLeft, setTimeLeft] = useState<number>(duration ?? 0);
+  const [timeLeft, setTimeLeft] = useState(duration ?? 0);
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const opStartRef = useRef<number>(Date.now());
+  const timerRef = useRef<number | null>(null);
+  const opStartRef = useRef(Date.now());
 
-  const opLockRef = useRef<boolean>(false); // evita respuestas repetidas
-  const opCooldownRef = useRef<boolean>(false); // ignora ruido tras nueva operación
-
-  // 🎤 reconocimiento
-  const { startListening, stopListening, listening, micState } =
-    useSpeechRecognition(handleStableSpeech);
+  const opLockRef = useRef(false);      // evita dobles respuestas
+  const opCooldownRef = useRef(false);  // evita ruido después de nueva operación
 
   // --------------------------------------------------
-  // Llega texto final estable
+  // Whisper
+  // --------------------------------------------------
+  const {
+    startListening,
+    stopListening,
+    micState,
+    listening,
+  } = useWhisperRecognition(handleStableSpeech);
+
+  // --------------------------------------------------
+  // CUANDO LLEGA TEXTO FINAL (Whisper)
   // --------------------------------------------------
   function handleStableSpeech(text: string) {
-    console.log("💬 Respuesta recibida:", text);
-
     if (phase !== "running") return;
     if (opCooldownRef.current) return;
     if (opLockRef.current) return;
@@ -99,35 +104,32 @@ export function useGameCore({
     if (!Number.isFinite(number)) return;
 
     opLockRef.current = true;
+    stopListening(); // paramos Whisper antes de procesar
 
-    // 🛑 DETENER AQUÍ el reconocimiento
-    setTimeout(() => stopListening(), 0);
     processAnswer(number);
   }
-
 
   // --------------------------------------------------
   // Procesar respuesta
   // --------------------------------------------------
   function processAnswer(num: number) {
-    console.log("🎮 processAnswer num =", num, "esperado =", operation.result);
     const expected = operation.result;
     const ok = num === expected;
 
     setFeedback(ok ? "✅ ¡Correcto!" : `❌ Incorrecto (${expected})`);
-    setFeedbackId((id) => id + 1);
+    setFeedbackId(id => id + 1);
 
-    if (ok) setCorrect((n) => n + 1);
-    else setWrong((n) => n + 1);
+    if (ok) setCorrect(n => n + 1);
+    else setWrong(n => n + 1);
 
     const timeTaken = (Date.now() - opStartRef.current) / 1000;
 
     const points = calculateScore({
       isCorrect: ok,
-      level: (customOptions?.levelConfigId ?? difficulty) ?? 1,
+      level: (customOptions?.levelConfigId ?? difficulty),
       timeTaken,
       opType: operation.opType,
-      overflowCount: (customOptions?.overflowDigits?.[0] ?? 0),
+      overflowCount: customOptions?.overflowDigits?.[0] ?? 0,
     });
 
     const entry: ResultEntry = {
@@ -138,33 +140,28 @@ export function useGameCore({
       timeTaken,
     };
 
-    setResults((prev) => [...prev, entry]);
-    setTotalScore((p) => p + points);
+    setResults(prev => [...prev, entry]);
+    setTotalScore(prev => prev + points);
 
     nextOperation();
   }
 
   // --------------------------------------------------
-  // Siguiente operación
+  // Nueva operación
   // --------------------------------------------------
   function nextOperation() {
-    console.log("🎮 nextOperation");
-
     opLockRef.current = false;
     opCooldownRef.current = true;
 
-    // solo generamos operación nueva
     setOperation(generateOperation(customOptions ?? { difficulty }));
 
-    // cooldown para ignorar ruido anterior
     setTimeout(() => {
       opCooldownRef.current = false;
-    }, 250); // 250ms es suficiente
+    }, 250);
   }
 
-
   // --------------------------------------------------
-  // Start game
+  // Iniciar juego
   // --------------------------------------------------
   function startGame() {
     setPhase("running");
@@ -178,7 +175,9 @@ export function useGameCore({
   // --------------------------------------------------
   function resetGame() {
     stopListening();
-    if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+    }
 
     setPhase("ready");
     setOperation(generateOperation(customOptions ?? { difficulty }));
@@ -191,7 +190,7 @@ export function useGameCore({
   }
 
   // --------------------------------------------------
-  // Temporizador
+  // Temporizador (si aplica)
   // --------------------------------------------------
   useEffect(() => {
     if (phase !== "running" || !duration) return;
@@ -203,27 +202,33 @@ export function useGameCore({
       setTimeLeft(rem);
 
       if (rem <= 0) {
-        clearInterval(timerRef.current!);
+        if (timerRef.current !== null) {
+          clearInterval(timerRef.current);
+        }
+
         stopListening();
         setPhase("finished");
         onFinish?.({ correct, wrong, totalScore, results });
       }
-    }, 1000);
+    }, 1000) as unknown as number;
 
-    return () => clearInterval(timerRef.current!);
+    return () => {
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+      }
+    };
   }, [phase]);
 
+  // Reiniciar cronómetro cada vez que cambia la operación
   useEffect(() => {
-    if (phase !== "running") return;
-
-    opStartRef.current = Date.now();
+    if (phase === "running") {
+      opStartRef.current = Date.now();
+    }
   }, [operation]);
 
-  // Cuando React ya ha pintado la nueva operación → ahora sí arrancamos micro
+  // Arrancar Whisper AUTOMÁTICAMENTE cuando la operación se pinta en pantalla
   useEffect(() => {
     if (phase !== "running") return;
-
-    console.log("🎮 Nueva operación pintada → startListening()");
     startListening();
   }, [operation]);
 

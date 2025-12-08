@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import Voice from "@react-native-voice/voice";
+import { MicState } from "@/core/types/audio";
 
 // Activa/desactiva logs aquí
 const DEBUG_SPEECH = true;
@@ -9,8 +10,6 @@ const DEBUG_SPEECH = true;
 function log(...args: any[]) {
   if (DEBUG_SPEECH) console.log("[🎤 Speech]", ...args);
 }
-
-export type MicState = "idle" | "listening";
 
 export function useSpeechRecognition(onStableText: (text: string) => void) {
   const [micState, setMicState] = useState<MicState>("idle");

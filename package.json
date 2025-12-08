@@ -1,7 +1,8 @@
 {
-  "name": "my-android-app",
+  "name": "cerebrin",
   "version": "1.0.0",
   "main": "expo/AppEntry.js",
+  "private": true,
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -12,7 +13,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-async-storage/async-storage": "~2.2.0",
     "@react-native-community/slider": "~5.0.1",
-    "@react-native-voice/voice": "^3.2.4",
+    "@xenova/transformers": "^2.17.2",
     "expo": "~54.0.2",
     "expo-asset": "~12.0.9",
     "expo-dev-client": "~6.0.16",
@@ -32,12 +33,18 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
-    "@types/react-native": "^0.72.8",
-    "babel-preset-expo": "^12.0.0",
     "metro": "^0.81.0",
     "metro-config": "^0.81.0",
     "metro-resolver": "^0.81.0",
     "typescript": "^5.4.0"
   },
-  "private": true
+  "overrides": {
+    "sharp": "*",
+    "babel-preset-expo": "54.0.8"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
+  }
 }

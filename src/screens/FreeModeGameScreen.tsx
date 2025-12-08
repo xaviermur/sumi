@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
@@ -8,20 +8,19 @@ interface FreeModeGameScreenProps {
   onExit: () => void;
   difficulty?: number;
   duration?: number; // segundos
-  onOpenHelp: (section?: HelpSectionId) => void; // ✅ nuevo
+  onOpenHelp: (section?: HelpSectionId) => void;
 }
 
 export default function FreeModeGameScreen({
   onExit,
   difficulty = 1,
   duration = 60,
-  onOpenHelp
+  onOpenHelp,
 }: FreeModeGameScreenProps) {
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
   const [isTop5, setIsTop5] = useState(false);
   const [currentDifficulty, setCurrentDifficulty] = useState(difficulty);
 
-  // 🎮 Lógica del juego
   const {
     operation,
     feedback,
@@ -45,7 +44,6 @@ export default function FreeModeGameScreen({
     onFinish: handleFinish,
   });
 
-  // 🏆 Guardar récord al terminar
   function handleFinish({ correct, wrong, totalScore }: GameSummary) {
     const modeKey = getModeKey("free", currentDifficulty, duration);
     const record = { score: totalScore, correct, wrong };
@@ -56,7 +54,6 @@ export default function FreeModeGameScreen({
     });
   }
 
-  // 🔼 / 🔽 Cambiar dificultad
   const increaseLevel = () => {
     setCurrentDifficulty((prev) => Math.min(prev + 1, 5));
   };
@@ -64,6 +61,15 @@ export default function FreeModeGameScreen({
   const decreaseLevel = () => {
     setCurrentDifficulty((prev) => Math.max(prev - 1, 1));
   };
+
+  // 🎤 Auto-activar / desactivar el micrófono según la fase
+  useEffect(() => {
+    if (phase === "running") {
+      startListening();
+    } else {
+      stopListening();
+    }
+  }, [phase, startListening, stopListening]);
 
   return (
     <GameScreenLayout

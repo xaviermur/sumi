@@ -7,12 +7,11 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { GameMode } from "@/core/types/game";
 
 // ─────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────
-
-export type MenuMode = "free" | "timeattack" | "custom";
 
 export interface CustomOptions {
   type: ("sum" | "sub")[];
@@ -23,7 +22,7 @@ export interface CustomOptions {
 }
 
 export interface StartGameOptions {
-  mode: MenuMode | null;
+  mode: GameMode | null;
   difficulty?: number;
   duration: number;
   customOptions?: CustomOptions;
@@ -44,7 +43,7 @@ export default function MenuScreen({
   onShowRecords,
   onOpenHelp,
 }: MenuScreenProps) {
-  const [selectedMode, setSelectedMode] = useState<MenuMode | null>(null);
+  const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [difficulty, setDifficulty] = useState<number>(1);
   const [duration, setDuration] = useState<number>(60);
 
@@ -173,7 +172,7 @@ export default function MenuScreen({
         ].map((opt) => (
           <TouchableOpacity
             key={opt.key}
-            onPress={() => setSelectedMode(opt.key as MenuMode)}
+            onPress={() => setSelectedMode(opt.key as GameMode)}
             style={{
               padding: 10,
               borderRadius: 8,

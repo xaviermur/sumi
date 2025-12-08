@@ -1,17 +1,19 @@
 import React from "react";
 import { Text, View } from "react-native";
+import type { MicState } from "@/core/types/audio";
 
-export default function MicIndicator({ micState }: { micState: string }) {
+export default function MicIndicator({ micState }: { micState: MicState }) {
   let text = "";
+
   switch (micState) {
-    case "waiting":
-      text = "🎤 Esperando…";
+    case "idle":
+      text = "🎤 Esperando…"; // equivalente a "waiting"
       break;
     case "listening":
       text = "👂 Escuchando…";
       break;
-    case "processing":
-      text = "⏳ Procesando…";
+    case "error":
+      text = "⚠️ Error de micrófono";
       break;
     default:
       text = "Micro inactivo";

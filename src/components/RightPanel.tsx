@@ -3,10 +3,11 @@ import { View, Text, Animated, useWindowDimensions } from "react-native";
 import LottieView from "lottie-react-native";
 import LastResultPanel from "./LastResultPanel";
 import { Operation } from "../core/types/operation";
+import { MicState } from "@/core/types/audio";
 
 type RightPanelProps = {
   operation: Operation;
-  micState: "idle" | "waiting" | "listening" | "processing";
+  micState: MicState;
   feedback: string | null;
   feedbackId?: number;
   lastResult: Operation | null;
@@ -80,27 +81,25 @@ export default function RightPanel({
       }}
     >
       {/* Estado micro */}
-      {micState !== "idle" && (
-        <Text
-          style={{
-            fontSize: isSmallScreen ? 14 : 18,
-            fontWeight: "600",
-            marginBottom: 10,
-            color:
-              micState === "waiting"
-                ? "green"
-                : micState === "listening"
+      <Text
+        style={{
+          fontSize: isSmallScreen ? 14 : 18,
+          fontWeight: "600",
+          marginBottom: 10,
+          color:
+            micState === "idle"
+              ? "green"        // normalmente no se verá porque filtramos arriba
+              : micState === "listening"
                 ? "#e6b800"
                 : "#e67e22",
-          }}
-        >
-          {micState === "waiting"
-            ? "🎤 Esperando..."
-            : micState === "listening"
+        }}
+      >
+        {micState === "idle"
+          ? "🎤 Esperando..."
+          : micState === "listening"
             ? "🎧 Escuchando..."
-            : "🧠 Procesando..."}
-        </Text>
-      )}
+            : "⚠️ Error en el micrófono"}
+      </Text>
 
       {/* Operación centrada */}
       <View style={{ alignItems: "flex-end", marginTop: 10 }}>

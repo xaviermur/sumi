@@ -4,9 +4,10 @@ import LeftPanel from "../components/LeftPanel";
 import RightPanel from "../components/RightPanel";
 import SummaryPanel from "../components/SummaryPanel";
 import type { ScoreRecord } from "../core/logic/recordsStorage";
-import type { MicState } from "../hooks/useSpeechRecognition";
 import type { Operation } from "../core/types/operation";
 import type { HelpSectionId } from "./HelpScreen";
+import { MicState } from "@/core/types/audio";
+import { GameMode } from "@/core/types/game";
 
 // Tipo del resultado de una operación en la partida
 interface GameResult extends Operation {
@@ -18,7 +19,7 @@ interface GameResult extends Operation {
 
 interface GameScreenLayoutProps {
   // Datos base
-  mode: "free" | "timeattack" | "custom";
+  mode: GameMode;
   phase: "ready" | "running" | "finished";
   operation: Operation;
   feedback: string | null;

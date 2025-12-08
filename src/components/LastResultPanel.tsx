@@ -1,7 +1,15 @@
 import React from "react";
 import { View, Text } from "react-native";
+import type { ResultEntry } from "@/hooks/useGameCore";
 
-export default function LastResultPanel({ lastResult }) {
+interface LastResultPanelProps {
+  lastResult: ResultEntry | null;
+}
+
+export default function LastResultPanel({ lastResult }: LastResultPanelProps) {
+  // Evitamos errores si todavía no hay resultado
+  if (!lastResult) return null;
+
   return (
     <View
       style={{
@@ -24,9 +32,13 @@ export default function LastResultPanel({ lastResult }) {
       <Text style={{ fontSize: 20, fontFamily: "monospace" }}>
         {`${lastResult.num1}`.padStart(4, " ")}
       </Text>
+
       <Text style={{ fontSize: 20, fontFamily: "monospace" }}>
-        {`${lastResult.opType === "sum" ? "+" : "-"} ${String(lastResult.num2).padStart(3, " ")}`}
+        {`${lastResult.opType === "sum" ? "+" : "-"} ${String(
+          lastResult.num2
+        ).padStart(3, " ")}`}
       </Text>
+
       <View
         style={{
           width: "100%",
@@ -35,6 +47,7 @@ export default function LastResultPanel({ lastResult }) {
           marginTop: 2,
         }}
       />
+
       <Text
         style={{
           fontSize: 18,
@@ -42,10 +55,15 @@ export default function LastResultPanel({ lastResult }) {
           marginTop: 2,
         }}
       >
-        {lastResult.success ? `✅ ${lastResult.given}` : `❌ ${lastResult.given}`}
+        {lastResult.success
+          ? `✅ ${lastResult.given}`
+          : `❌ ${lastResult.given}`}
       </Text>
+
       {!lastResult.success && (
-        <Text style={{ fontSize: 16, color: "#555" }}>✅ {lastResult.result}</Text>
+        <Text style={{ fontSize: 16, color: "#555" }}>
+          ✅ {lastResult.result}
+        </Text>
       )}
     </View>
   );

@@ -1,11 +1,10 @@
+import { GameMode } from "@/core/types/game";
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 
 // ─────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────
-
-export type GameMode = "free" | "timeattack" | "custom";
 
 export interface LeftPanelProps {
   listening: boolean;

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
@@ -9,13 +9,13 @@ const ROUND_SECONDS = 60;
 interface TimeAttackGameScreenProps {
   onExit: () => void;
   difficulty?: number;
-  onOpenHelp: (section?: HelpSectionId) => void; // ✅ nuevo
+  onOpenHelp: (section?: HelpSectionId) => void;
 }
 
 export default function TimeAttackGameScreen({
   onExit,
   difficulty = 1,
-  onOpenHelp
+  onOpenHelp,
 }: TimeAttackGameScreenProps) {
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
   const [isTop5, setIsTop5] = useState(false);
@@ -54,6 +54,17 @@ export default function TimeAttackGameScreen({
     duration: ROUND_SECONDS,
     onFinish: handleFinish,
   });
+
+  // 🔊 Automatizar inicio/parada de escucha según la fase del juego
+  useEffect(() => {
+    // Cuando empieza la partida, activar el micrófono
+    if (phase === "running") {
+      startListening();
+    } else {
+      // En cualquier otra fase (countdown, summary, etc.) lo paramos
+      stopListening();
+    }
+  }, [phase, listening, startListening, stopListening]);
 
   return (
     <GameScreenLayout

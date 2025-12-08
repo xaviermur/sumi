@@ -1,0 +1,1 @@
+export const PICOVOICE_KEY = "BBj1jMUAhwwVzXBfHa7mnm/4Bq+uLODPsMy4a8aM8WvUQsZ659kONw==";

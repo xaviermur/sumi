@@ -7,9 +7,11 @@ import CustomModeGameScreen from "./src/screens/CustomModeGameScreen";
 import RecordsScreen from "./src/screens/RecordsScreen";
 import HelpScreen, { HelpSectionId } from "./src/screens/HelpScreen";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { GameMode } from "@/core/types/game";
+import { CheetahProvider } from "@/speech/CheetahProvider";
 
 type GameOptions = {
-  mode: "free" | "timeattack" | "custom";
+  mode: GameMode;
   difficulty?: number;
   duration: number;
   customOptions?: any;
@@ -49,60 +51,63 @@ export default function App() {
   };
 
   return (
+
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
-          {/* 🏠 MENÚ PRINCIPAL */}
-          {screen === "menu" && (
-            <MenuScreen
-              onStartGame={handleStartGame}
-              onShowRecords={handleShowRecords}
-              onOpenHelp={() => handleOpenHelp("intro")}
-            />
-          )}
+        <CheetahProvider>
+          <View style={{ flex: 1 }}>
+            {/* 🏠 MENÚ PRINCIPAL */}
+            {screen === "menu" && (
+              <MenuScreen
+                onStartGame={handleStartGame}
+                onShowRecords={handleShowRecords}
+                onOpenHelp={() => handleOpenHelp("intro")}
+              />
+            )}
 
-          {/* 🏆 RÉCORDS */}
-          {screen === "records" && <RecordsScreen onBack={() => setScreen("menu")} />}
+            {/* 🏆 RÉCORDS */}
+            {screen === "records" && <RecordsScreen onBack={() => setScreen("menu")} />}
 
-          {/* 🆘 AYUDA */}
-          {screen === "help" && (
-            <HelpScreen
-              onBack={handleBackFromHelp} // 🔙 vuelve a la anterior
-              startSection={helpSection}
-            />
-          )}
+            {/* 🆘 AYUDA */}
+            {screen === "help" && (
+              <HelpScreen
+                onBack={handleBackFromHelp} // 🔙 vuelve a la anterior
+                startSection={helpSection}
+              />
+            )}
 
-          {/* 🎮 JUEGO */}
-          {screen === "game" && options && (
-            <>
-              {options.mode === "free" && (
-                <FreeModeGameScreen
-                  onExit={handleExitGame}
-                  duration={options.duration}
-                  difficulty={options.difficulty}
-                  onOpenHelp={handleOpenHelp}
-                />
-              )}
+            {/* 🎮 JUEGO */}
+            {screen === "game" && options && (
+              <>
+                {options.mode === "free" && (
+                  <FreeModeGameScreen
+                    onExit={handleExitGame}
+                    duration={options.duration}
+                    difficulty={options.difficulty}
+                    onOpenHelp={handleOpenHelp}
+                  />
+                )}
 
-              {options.mode === "timeattack" && (
-                <TimeAttackGameScreen
-                  onExit={handleExitGame}
-                  difficulty={options.difficulty}
-                  onOpenHelp={handleOpenHelp}
-                />
-              )}
+                {options.mode === "timeattack" && (
+                  <TimeAttackGameScreen
+                    onExit={handleExitGame}
+                    difficulty={options.difficulty}
+                    onOpenHelp={handleOpenHelp}
+                  />
+                )}
 
-              {options.mode === "custom" && (
-                <CustomModeGameScreen
-                  onExit={handleExitGame}
-                  duration={options.duration}
-                  customOptions={options.customOptions}
-                  onOpenHelp={handleOpenHelp}
-                />
-              )}
-            </>
-          )}
-        </View>
+                {options.mode === "custom" && (
+                  <CustomModeGameScreen
+                    onExit={handleExitGame}
+                    duration={options.duration}
+                    customOptions={options.customOptions}
+                    onOpenHelp={handleOpenHelp}
+                  />
+                )}
+              </>
+            )}
+          </View>
+        </CheetahProvider>
       </SafeAreaView>
     </SafeAreaProvider>
   );

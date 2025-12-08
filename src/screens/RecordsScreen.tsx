@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScoreRecord } from "../core/logic/recordsStorage";
+import { GameMode } from "@/core/types/game";
 
 interface GroupedRecords {
   key: string;
-  mode: "free" | "timeattack";
+  mode: GameMode;
   difficulty: number;
   duration?: number;
   records: ScoreRecord[];
