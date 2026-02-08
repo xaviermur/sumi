@@ -37,8 +37,8 @@ npm run start
 ## Dev Client (recomendado para testing en device)
 1. Compilar el dev client una vez (iOS/Android):
 ```
-eas build --profile development --platform ios
-eas build --profile development --platform android
+npx eas build --profile development --platform ios
+npx eas build --profile development --platform android
 ```
 2. Lanzar Metro en modo dev-client:
 ```

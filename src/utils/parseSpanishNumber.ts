@@ -28,11 +28,26 @@ export function parseSpanishNumber(text: any): number {
 
   const words = target.split(/\s+/);
 
-  // Diccionarios
+  // Si son solo unidades repetidas (ej: "cinco cinco"), usar la última
+  // Nota: evitamos concatenar respuestas cuando el reconocimiento acumula texto.
+  // Se aplica antes de combinar decenas/centenas.
+  // (Ej: "cinco cinco" -> 5)
   const UNIDADES: Record<string, number> = {
     cero: 0, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, sinco: 5,
     seis: 6, siete: 7, ocho: 8, nueve: 9,
   };
+
+  const allUnits = words.length > 1 && words.every((w) => UNIDADES[w] !== undefined);
+  if (allUnits) {
+    return UNIDADES[words[words.length - 1]];
+  }
+
+  // Manejar "veinti dos" (separado) como 22
+  if (words.length === 2 && words[0] === "veinti" && UNIDADES[words[1]] !== undefined) {
+    return 20 + UNIDADES[words[1]];
+  }
+
+  // Diccionarios
 
   const DIEZES: Record<string, number> = {
     diez: 10, once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
@@ -59,14 +74,27 @@ export function parseSpanishNumber(text: any): number {
 
   // 3️⃣ Parse palabra por palabra
   let total = 0;
+  let matched = false;
 
   for (const w of words) {
-    if (UNIDADES[w] !== undefined) total += UNIDADES[w];
-    else if (DIEZES[w] !== undefined) total += DIEZES[w];
-    else if (VEINTES[w] !== undefined) total += VEINTES[w];
-    else if (DECENAS[w] !== undefined) total += DECENAS[w];
-    else if (CENTENAS[w] !== undefined) total += CENTENAS[w];
+    if (UNIDADES[w] !== undefined) {
+      total += UNIDADES[w];
+      matched = true;
+    } else if (DIEZES[w] !== undefined) {
+      total += DIEZES[w];
+      matched = true;
+    } else if (VEINTES[w] !== undefined) {
+      total += VEINTES[w];
+      matched = true;
+    } else if (DECENAS[w] !== undefined) {
+      total += DECENAS[w];
+      matched = true;
+    } else if (CENTENAS[w] !== undefined) {
+      total += CENTENAS[w];
+      matched = true;
+    }
   }
 
+  if (!matched) return NaN;
   return Number.isFinite(total) ? total : NaN;
 }

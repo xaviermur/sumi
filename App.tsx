@@ -6,15 +6,15 @@ import TimeAttackGameScreen from "./src/screens/TimeAttackGameScreen";
 import RecordsScreen from "./src/screens/RecordsScreen";
 import HelpScreen, { HelpSectionId } from "./src/screens/HelpScreen";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { GameMode, GameLanguage } from "@/core/types/game";
+import { GameMode } from "@/core/types/game";
 import type { OperationType } from "@/core/types/operation";
 import { WhisperProvider } from "@/speech/WhisperProvider"; // 👈 NUEVO
+import { I18nProvider } from "@/i18n/I18nProvider";
 
 type GameOptions = {
   mode: GameMode;
   difficulty: number;
   operationTypes: OperationType[];
-  language: GameLanguage;
 };
 
 export default function App() {
@@ -54,8 +54,9 @@ export default function App() {
 
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }}>
-        <WhisperProvider>
-          <View style={{ flex: 1 }}>
+        <I18nProvider>
+          <WhisperProvider>
+            <View style={{ flex: 1 }}>
             {/* 🏠 MENÚ PRINCIPAL */}
             {screen === "menu" && (
               <MenuScreen
@@ -84,7 +85,6 @@ export default function App() {
                     onExit={handleExitGame}
                     difficulty={options.difficulty}
                     operationTypes={options.operationTypes}
-                    language={options.language}
                     onOpenHelp={handleOpenHelp}
                   />
                 )}
@@ -94,14 +94,14 @@ export default function App() {
                     onExit={handleExitGame}
                     difficulty={options.difficulty}
                     operationTypes={options.operationTypes}
-                    language={options.language}
                     onOpenHelp={handleOpenHelp}
                   />
                 )}
               </>
             )}
-          </View>
-        </WhisperProvider>
+            </View>
+          </WhisperProvider>
+        </I18nProvider>
       </SafeAreaView>
     </SafeAreaProvider>
   );

@@ -1,1 +1,6 @@
-export type MicState = "idle" | "listening" | "error";
+export type MicState =
+  | "idle"
+  | "listening"
+  | "recognizing"
+  | "processing"
+  | "error";

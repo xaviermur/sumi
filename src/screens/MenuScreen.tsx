@@ -2,13 +2,15 @@ import React, { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { OperationType } from "@/core/types/operation";
-import { GameLanguage, GameMode } from "@/core/types/game";
+import { GameMode } from "@/core/types/game";
+import { LANGUAGES } from "@/i18n/strings";
+import { useI18n } from "@/i18n/I18nProvider";
+import FlagIcon from "@/components/FlagIcon";
 
 export interface StartGameOptions {
   mode: GameMode;
   difficulty: number;
   operationTypes: OperationType[];
-  language: GameLanguage;
 }
 
 export interface MenuScreenProps {
@@ -19,19 +21,18 @@ export interface MenuScreenProps {
 
 type OperationChoice = "sum" | "sub" | "sum_sub";
 
-const difficultyLabels = ["Muy fácil", "Fácil", "Media", "Difícil", "Experto"];
-
 export default function MenuScreen({
   onStartGame,
   onShowRecords,
   onOpenHelp,
 }: MenuScreenProps) {
+  const { lang, setLang, strings } = useI18n();
   const [operationChoice, setOperationChoice] = useState<OperationChoice | null>(
     null
   );
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [difficulty, setDifficulty] = useState<number>(1);
-  const [language, setLanguage] = useState<GameLanguage>("es");
+  const [showLang, setShowLang] = useState(false);
 
   const operationTypes = useMemo<OperationType[]>(() => {
     if (operationChoice === "sum") return ["sum"];
@@ -48,7 +49,6 @@ export default function MenuScreen({
       mode: selectedMode,
       difficulty,
       operationTypes,
-      language,
     });
   };
 
@@ -60,22 +60,86 @@ export default function MenuScreen({
         backgroundColor: "#f2f2f2",
       }}
     >
-      <Text style={{ fontSize: 32, fontWeight: "700", marginBottom: 30 }}>
-        🧮 CEREBRiN
-      </Text>
+      <View
+        style={{
+          width: "100%",
+          alignItems: "center",
+          marginBottom: 30,
+        }}
+      >
+        <Text style={{ fontSize: 32, fontWeight: "700" }}>
+          {strings.appTitle}
+        </Text>
+      </View>
 
-      {/* Botón ayuda */}
+      {/* Botón ayuda + idioma */}
       <View
         style={{
           position: "absolute",
           top: 40,
           right: 20,
           zIndex: 20,
+          flexDirection: "row",
+          alignItems: "center",
         }}
       >
         <TouchableOpacity onPress={onOpenHelp}>
           <Ionicons name="help-circle-outline" size={36} color="#2196f3" />
         </TouchableOpacity>
+
+        <View style={{ marginLeft: 8 }}>
+          <TouchableOpacity
+            onPress={() => setShowLang((prev) => !prev)}
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 10,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderWidth: 1,
+              borderColor: "#ddd",
+            }}
+          >
+            <FlagIcon lang={lang} size={20} />
+          </TouchableOpacity>
+
+          {showLang && (
+            <View
+              style={{
+                position: "absolute",
+                top: 46,
+                right: 0,
+                backgroundColor: "#fff",
+                borderRadius: 10,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                shadowColor: "#000",
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+                zIndex: 30,
+              }}
+            >
+              {LANGUAGES.filter((l) => l !== lang).map((l) => (
+                <TouchableOpacity
+                  key={l}
+                  onPress={() => {
+                    setLang(l);
+                    setShowLang(false);
+                  }}
+                  style={{
+                    paddingVertical: 6,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <View style={{ marginRight: 8 }}>
+                    <FlagIcon lang={l} size={16} />
+                  </View>
+                  <Text style={{ fontSize: 16 }}>{strings.languageName[l]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
 
       {/* 1) Tipo de operaciones */}
@@ -89,13 +153,13 @@ export default function MenuScreen({
         }}
       >
         <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 12 }}>
-          1. Tipo de operaciones
+          {strings.menu.stepOperations}
         </Text>
 
         {[
-          { key: "sum", label: "SUMAS" },
-          { key: "sub", label: "RESTAS" },
-          { key: "sum_sub", label: "SUMAS Y RESTAS" },
+          { key: "sum", label: strings.menu.operations.sum },
+          { key: "sub", label: strings.menu.operations.sub },
+          { key: "sum_sub", label: strings.menu.operations.sumSub },
         ].map((opt) => (
           <TouchableOpacity
             key={opt.key}
@@ -132,13 +196,13 @@ export default function MenuScreen({
           }}
         >
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 12 }}>
-            2. Modo de juego
-          </Text>
+          {strings.menu.stepMode}
+        </Text>
 
-          {[
-            { key: "free", label: "LIBRE (sin tiempo)" },
-            { key: "timeattack", label: "SUPERVIVENCIA (100 s)" },
-          ].map((opt) => (
+        {[
+          { key: "free", label: strings.menu.modes.free },
+          { key: "timeattack", label: strings.menu.modes.timeattack },
+        ].map((opt) => (
             <TouchableOpacity
               key={opt.key}
               onPress={() => setSelectedMode(opt.key as GameMode)}
@@ -175,8 +239,8 @@ export default function MenuScreen({
           }}
         >
           <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 12 }}>
-            3. Nivel
-          </Text>
+          {strings.menu.stepLevel}
+        </Text>
 
           {[1, 2, 3, 4, 5].map((n) => (
             <TouchableOpacity
@@ -195,53 +259,12 @@ export default function MenuScreen({
                   color: difficulty === n ? "#fff" : "#333",
                 }}
               >
-                {difficultyLabels[n - 1]}
+                {strings.menu.difficulty[n - 1]}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
-
-      {/* Idioma */}
-      <View
-        style={{
-          backgroundColor: "#fff",
-          borderRadius: 12,
-          padding: 20,
-          width: "90%",
-          marginBottom: 20,
-        }}
-      >
-        <Text style={{ fontSize: 20, fontWeight: "600", marginBottom: 12 }}>
-          Idioma
-        </Text>
-
-        {[
-          { key: "es", label: "Español" },
-          { key: "ca", label: "Català" },
-          { key: "en", label: "English" },
-        ].map((opt) => (
-          <TouchableOpacity
-            key={opt.key}
-            onPress={() => setLanguage(opt.key as GameLanguage)}
-            style={{
-              padding: 10,
-              borderRadius: 8,
-              marginBottom: 8,
-              backgroundColor: language === opt.key ? "#8bc34a" : "#eee",
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                color: language === opt.key ? "#fff" : "#333",
-              }}
-            >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
 
       {/* Botón comenzar */}
       <TouchableOpacity
@@ -256,7 +279,7 @@ export default function MenuScreen({
         }}
       >
         <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
-          🚀 Comenzar
+          🚀 {strings.menu.start}
         </Text>
       </TouchableOpacity>
 
@@ -271,7 +294,7 @@ export default function MenuScreen({
         }}
       >
         <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
-          🏆 Ver récords
+          🏆 {strings.menu.records}
         </Text>
       </TouchableOpacity>
     </ScrollView>

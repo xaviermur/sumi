@@ -1,6 +1,7 @@
 import { GameMode } from "@/core/types/game";
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { useI18n } from "@/i18n/I18nProvider";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -45,12 +46,14 @@ export default function LeftPanel({
   difficulty,
   phase,
   onStartGame,
-  autoStartLabel = "▶ Iniciar",
+  autoStartLabel,
   onIncreaseLevel,
   onDecreaseLevel,
   totalScore = 0,
   onOpenHelp,
 }: LeftPanelProps) {
+  const { strings, t } = useI18n();
+  const startLabel = autoStartLabel ?? strings.game.startLabel;
   const isRunning = phase === "running";
   const isFinished = phase === "finished";
   const isFreeMode = mode === "free";
@@ -73,15 +76,15 @@ export default function LeftPanel({
         <View style={{ alignItems: "center", marginBottom: 10 }}>
           <Text style={{ fontSize: 28, fontWeight: "700", color: "#333" }}>
             {mode === "free"
-              ? "🆓 Modo libre"
+              ? strings.game.freeTitle
               : mode === "timeattack"
-              ? "🛡️ Supervivencia"
-              : "🛠️ Modo"}
+              ? strings.game.timeattackTitle
+              : "🛠️"}
           </Text>
 
           {difficulty !== undefined && (
             <Text style={{ fontSize: 18, color: "#777", marginTop: 4 }}>
-              Dificultad: {difficulty}
+              {t(strings.game.difficulty, { n: difficulty })}
             </Text>
           )}
         </View>
@@ -100,9 +103,9 @@ export default function LeftPanel({
           <Text style={{ fontSize: 16, color: "#777" }}>
             {isRunning
               ? isFreeMode
-                ? "Tiempo ilimitado"
-                : "Tiempo restante"
-              : "Listo para comenzar"}
+                ? strings.game.timeUnlimited
+                : strings.game.timeRemaining
+              : strings.game.ready}
           </Text>
         </View>
 
@@ -119,14 +122,18 @@ export default function LeftPanel({
             <Text style={{ fontSize: 40, color: "#4caf50", fontWeight: "700" }}>
               ✅ {correct}
             </Text>
-            <Text style={{ fontSize: 16, color: "#555" }}>Correctas</Text>
+            <Text style={{ fontSize: 16, color: "#555" }}>
+              {strings.game.correct}
+            </Text>
           </View>
 
           <View style={{ alignItems: "center" }}>
             <Text style={{ fontSize: 40, color: "#f44336", fontWeight: "700" }}>
               ❌ {wrong}
             </Text>
-            <Text style={{ fontSize: 16, color: "#555" }}>Erróneas</Text>
+            <Text style={{ fontSize: 16, color: "#555" }}>
+              {strings.game.wrong}
+            </Text>
           </View>
         </View>
 
@@ -139,7 +146,7 @@ export default function LeftPanel({
               color: "#ff9800",
             }}
           >
-            ⭐ Puntuación: {totalScore.toLocaleString()} pts
+            ⭐ {strings.game.score}: {totalScore.toLocaleString()} {strings.game.points}
           </Text>
         </View>
       </View>
@@ -158,7 +165,7 @@ export default function LeftPanel({
             }}
           >
             <Text style={{ color: "#fff", fontSize: 20, fontWeight: "600" }}>
-              {autoStartLabel}
+              {startLabel}
             </Text>
           </TouchableOpacity>
         )}
@@ -175,7 +182,7 @@ export default function LeftPanel({
             }}
           >
             <Text style={{ color: "#fff", fontSize: 18 }}>
-              {listening ? "🎙️ Detener micro" : "🎧 Reanudar micro"}
+              {listening ? strings.game.stopMic : strings.game.resumeMic}
             </Text>
           </TouchableOpacity>
         )}
@@ -191,7 +198,9 @@ export default function LeftPanel({
               marginBottom: 10,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 18 }}>⏹️ Finalizar</Text>
+            <Text style={{ color: "#fff", fontSize: 18 }}>
+              {strings.game.finish}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -206,7 +215,9 @@ export default function LeftPanel({
               marginBottom: 10,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 18 }}>🔁 Reiniciar</Text>
+            <Text style={{ color: "#fff", fontSize: 18 }}>
+              {strings.game.restart}
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -220,7 +231,9 @@ export default function LeftPanel({
             alignItems: "center",
           }}
         >
-          <Text style={{ color: "#fff", fontSize: 18 }}>🏠 Salir</Text>
+          <Text style={{ color: "#fff", fontSize: 18 }}>
+            {strings.game.exit}
+          </Text>
         </TouchableOpacity>
 
         {/* ❓ Ayuda */}
@@ -236,7 +249,7 @@ export default function LeftPanel({
             }}
           >
             <Text style={{ color: "#fff", fontSize: 18 }}>
-              ❓ Cómo responder
+              {strings.game.howToAnswer}
             </Text>
           </TouchableOpacity>
         )}
@@ -260,7 +273,7 @@ export default function LeftPanel({
               borderRadius: 8,
             }}
           >
-            <Text style={{ fontSize: 18 }}>⬇️ Nivel -</Text>
+            <Text style={{ fontSize: 18 }}>{strings.game.levelDown}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -272,7 +285,7 @@ export default function LeftPanel({
               borderRadius: 8,
             }}
           >
-            <Text style={{ fontSize: 18 }}>⬆️ Nivel +</Text>
+            <Text style={{ fontSize: 18 }}>{strings.game.levelUp}</Text>
           </TouchableOpacity>
         </View>
       )}

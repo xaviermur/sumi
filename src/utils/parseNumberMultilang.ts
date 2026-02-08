@@ -153,6 +153,10 @@ function parseWithHundreds(
   tens: Record<string, number>,
   hundredTokens: string[]
 ): number | null {
+  if (tokens.length > 1 && tokens.every((t) => t in units)) {
+    return units[tokens[tokens.length - 1]];
+  }
+
   let current = 0;
   let seen = false;
 

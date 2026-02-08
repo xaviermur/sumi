@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView, useWindowDimensions } from "react-native";
+import { useI18n } from "@/i18n/I18nProvider";
 
 interface ScoreRecord {
   score: number;
@@ -21,7 +22,7 @@ interface SummaryPanelProps {
 }
 
 export default function SummaryPanel({
-  title = "Resumen",
+  title,
   correct,
   wrong,
   durationSeconds,
@@ -31,6 +32,8 @@ export default function SummaryPanel({
   onRetry,
   onExit,
 }: SummaryPanelProps) {
+  const { strings, t } = useI18n();
+  const resolvedTitle = title ?? strings.summary.title;
   const total = correct + wrong;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
 
@@ -48,12 +51,12 @@ export default function SummaryPanel({
       {/* CABECERA */}
       <View style={{ alignItems: "center", marginBottom: 12 }}>
         <Text style={{ fontSize: isSmall ? 24 : 30, fontWeight: "800", color: "#333" }}>
-          {title}
+          {resolvedTitle}
         </Text>
 
         {typeof durationSeconds === "number" && (
           <Text style={{ fontSize: 16, color: "#777", marginTop: 4 }}>
-            ⏱️ Duración: {formatSec(durationSeconds)}
+            {t(strings.summary.duration, { n: formatSec(durationSeconds) })}
           </Text>
         )}
       </View>
@@ -70,21 +73,21 @@ export default function SummaryPanel({
           <Text style={{ fontSize: isSmall ? 26 : 36, fontWeight: "700", color: "#4caf50" }}>
             ✅ {correct}
           </Text>
-          <Text style={{ color: "#666" }}>Correctas</Text>
+          <Text style={{ color: "#666" }}>{strings.summary.correct}</Text>
         </View>
 
         <View style={{ alignItems: "center" }}>
           <Text style={{ fontSize: isSmall ? 26 : 36, fontWeight: "700", color: "#f44336" }}>
             ❌ {wrong}
           </Text>
-          <Text style={{ color: "#666" }}>Erróneas</Text>
+          <Text style={{ color: "#666" }}>{strings.summary.wrong}</Text>
         </View>
 
         <View style={{ alignItems: "center" }}>
           <Text style={{ fontSize: isSmall ? 22 : 30, fontWeight: "700", color: "#2196f3" }}>
             🎯 {accuracy}%
           </Text>
-          <Text style={{ color: "#666" }}>Precisión</Text>
+          <Text style={{ color: "#666" }}>{strings.summary.accuracy}</Text>
         </View>
       </View>
 
@@ -98,7 +101,7 @@ export default function SummaryPanel({
               color: "#ff9800",
             }}
           >
-            ⭐ {totalScore.toLocaleString()} pts
+            ⭐ {totalScore.toLocaleString()} {strings.game.points}
           </Text>
 
           {isTop5 && (
@@ -110,7 +113,7 @@ export default function SummaryPanel({
                 fontSize: isSmall ? 16 : 18,
               }}
             >
-              🏆 ¡Nuevo récord en el Top 5!
+              {strings.summary.newRecord}
             </Text>
           )}
         </View>
@@ -120,7 +123,7 @@ export default function SummaryPanel({
       {topRecords && topRecords.length > 0 && (
         <View style={{ marginTop: 20 }}>
           <Text style={{ fontSize: isSmall ? 18 : 20, fontWeight: "700", marginBottom: 10 }}>
-            🏆 Mejores puntuaciones
+            {strings.summary.topScores}
           </Text>
 
           {topRecords.map((record, index) => {
@@ -159,7 +162,7 @@ export default function SummaryPanel({
                     color: "#222",
                   }}
                 >
-                  {record.score} pts
+                  {record.score} {strings.game.points}
                 </Text>
               </View>
             );
@@ -184,7 +187,9 @@ export default function SummaryPanel({
             borderRadius: 10,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: isSmall ? 16 : 18 }}>🔁 Reintentar</Text>
+          <Text style={{ color: "#fff", fontSize: isSmall ? 16 : 18 }}>
+            {strings.summary.retry}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -196,7 +201,9 @@ export default function SummaryPanel({
             borderRadius: 10,
           }}
         >
-          <Text style={{ color: "#fff", fontSize: isSmall ? 16 : 18 }}>🏠 Salir</Text>
+          <Text style={{ color: "#fff", fontSize: isSmall ? 16 : 18 }}>
+            {strings.summary.exit}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

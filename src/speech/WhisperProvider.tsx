@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { Platform } from "react-native";
 import { pipeline, env, Pipeline } from "@xenova/transformers";
 import type { GameLanguage } from "@/core/types/game";
 
@@ -32,13 +33,16 @@ export function WhisperProvider({ children }: { children: ReactNode }) {
   const pipelineRef = useRef<Pipeline | null>(null);
 
   useEffect(() => {
+    if (Platform.OS !== "web") return;
     let cancelled = false;
 
     async function load() {
       try {
         // Ajustes recomendables para RN
         env.allowLocalModels = false;
-        env.useBrowserCache = true;
+        env.useBrowserCache = false;
+        env.useFSCache = false;
+        env.useFS = false;
 
         // Modelo pequeñito -> arranque más rápido
         const asr = await pipeline(

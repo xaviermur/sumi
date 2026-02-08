@@ -1,148 +1,222 @@
-import { useEffect, useRef, useState } from "react";
-import { Audio } from "expo-av";
-import { useWhisper } from "../speech/WhisperProvider";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 import type { MicState } from "@/core/types/audio";
 import type { GameLanguage } from "@/core/types/game";
 
-const SAMPLE_RATE = 16000;
-const BUFFER_SIZE = 2048;
-const SILENCE_THRESHOLD = 0.002;
-const SILENCE_FRAMES = 12;
+const RESTART_DELAY_MS = 300;
+const FINALIZE_DEBOUNCE_MS = 600;
+
+function mapLanguage(lang: GameLanguage) {
+  switch (lang) {
+    case "ca":
+      return "ca-ES";
+    case "en":
+      return "en-US";
+    case "es":
+    default:
+      return "es-ES";
+  }
+}
 
 export function useWhisperRecognition(
   onText: (t: string) => void,
   language: GameLanguage = "es"
 ) {
-  const { transcribe, ready } = useWhisper();
-
   const [micState, setMicState] = useState<MicState>("idle");
   const [listening, setListening] = useState(false);
+  const [ready, setReady] = useState(true);
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const pcmQueue = useRef<Float32Array[]>([]);
-  const silenceFrames = useRef(0);
-  const running = useRef(false);
+  const runningRef = useRef(false);
+  const shouldRestartRef = useRef(false);
+  const lastHandledRef = useRef<string>("");
+  const lastTranscriptRef = useRef<string>("");
+  const debounceTimeoutRef = useRef<number | null>(null);
+  const restartTimeoutRef = useRef<number | null>(null);
 
-  // ----------------------------------------------
-  // Convert Expo PCM -> Float32
-  // ----------------------------------------------
-  function onAudioFrame(data: Int16Array) {
-    if (!running.current) return;
-
-    const floats = new Float32Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-      floats[i] = data[i] / 32768;
+  const clearTranscript = () => {
+    lastTranscriptRef.current = "";
+    lastHandledRef.current = "";
+    if (debounceTimeoutRef.current != null) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
     }
+  };
 
-    pcmQueue.current.push(floats);
+  const startListening = useCallback(async () => {
+    shouldRestartRef.current = true;
+    if (runningRef.current) return;
 
-    // RMS
-    const rms =
-      Math.sqrt(floats.reduce((s, v) => s + v * v, 0) / floats.length) || 0;
-
-    if (rms < SILENCE_THRESHOLD) silenceFrames.current++;
-    else silenceFrames.current = 0;
-
-    // Fin de frase
-    if (silenceFrames.current >= SILENCE_FRAMES) {
-      stopListening();
-      const audio = mergeBuffers(pcmQueue.current);
-      pcmQueue.current = [];
-
-      if (audio.length > 4000) {
-        transcribe(audio, SAMPLE_RATE, { language }).then(onText);
-      }
-    }
-  }
-
-  function mergeBuffers(chunks: Float32Array[]) {
-    const total = chunks.reduce((s, c) => s + c.length, 0);
-    const out = new Float32Array(total);
-    let offset = 0;
-    for (const c of chunks) {
-      out.set(c, offset);
-      offset += c.length;
-    }
-    return out;
-  }
-
-  // ----------------------------------------------
-  // Start listening
-  // ----------------------------------------------
-  async function startListening() {
-    if (!ready) return;
-    if (running.current) return;
-
-    setMicState("listening");
-    setListening(true);
-    running.current = true;
-
-    pcmQueue.current = [];
-    silenceFrames.current = 0;
-
-    const { granted } = await Audio.requestPermissionsAsync();
-    if (!granted) {
-      console.warn("No permission for microphone");
+    const available = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+    if (!available) {
+      setMicState("error");
+      setReady(false);
       return;
     }
 
-    const rec = new Audio.Recording();
+    const { granted } =
+      await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) {
+      setMicState("error");
+      setReady(false);
+      return;
+    }
 
-    await rec.prepareToRecordAsync({
-      isMeteringEnabled: false,
-      android: {
-        extension: ".wav",
-        sampleRate: SAMPLE_RATE,
-        numberOfChannels: 1,
-        bitRate: 16,
-        outputFormat: Audio.AndroidOutputFormat.DEFAULT,
-        audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-      },
-      ios: {
-        extension: ".wav",
-        sampleRate: SAMPLE_RATE,
-        numberOfChannels: 1,
-        bitDepthHint: 16,
-        outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-        audioQuality: Audio.IOSAudioQuality.HIGH,
-      },
+    runningRef.current = true;
+    setMicState("listening");
+    setListening(true);
+
+    ExpoSpeechRecognitionModule.start({
+      lang: mapLanguage(language),
+      interimResults: true,
+      continuous: true,
+      maxAlternatives: 1,
     });
+  }, [language]);
 
-    rec.setOnRecordingStatusUpdate((status: any) => {
-      if (!status || !status.isRecording || !status.frameBuffer) return;
+  const stopListening = useCallback(async () => {
+    shouldRestartRef.current = false;
+    if (!runningRef.current) return;
 
-      const buffer = new Int16Array(status.frameBuffer);
-      onAudioFrame(buffer);
-    });
+    if (restartTimeoutRef.current != null) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
 
-    await rec.startAsync();
-    recordingRef.current = rec;
-  }
-
-  // ----------------------------------------------
-  // Stop listening
-  // ----------------------------------------------
-  async function stopListening() {
-    if (!running.current) return;
-
-    running.current = false;
+    runningRef.current = false;
     setListening(false);
-    setMicState("idle");
-
-    const rec = recordingRef.current;
-    if (!rec) return;
+    setMicState((prev) => (prev === "processing" ? "processing" : "idle"));
+    clearTranscript();
 
     try {
-      await rec.stopAndUnloadAsync();
+      await ExpoSpeechRecognitionModule.stop();
     } catch {
-      /* ignore */
+      // ignore
     }
-    recordingRef.current = null;
-  }
+  }, []);
+
+  const abortListening = useCallback(async () => {
+    shouldRestartRef.current = false;
+    if (!runningRef.current) return;
+
+    if (restartTimeoutRef.current != null) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+
+    runningRef.current = false;
+    setListening(false);
+    setMicState((prev) => (prev === "processing" ? "processing" : "idle"));
+    clearTranscript();
+
+    try {
+      await ExpoSpeechRecognitionModule.abort();
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useSpeechRecognitionEvent("start", () => {
+    runningRef.current = true;
+    setMicState("listening");
+    setListening(true);
+  });
+
+  useSpeechRecognitionEvent("speechstart", () => {
+    clearTranscript();
+    setMicState("recognizing");
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    runningRef.current = false;
+    if (shouldRestartRef.current) {
+      if (restartTimeoutRef.current == null) {
+        restartTimeoutRef.current = setTimeout(() => {
+          restartTimeoutRef.current = null;
+          startListening();
+        }, RESTART_DELAY_MS) as unknown as number;
+      }
+      return;
+    }
+
+    setListening(false);
+    setMicState("idle");
+  });
+
+  useSpeechRecognitionEvent("error", (event: any) => {
+    if (event?.error === "aborted") {
+      runningRef.current = false;
+      setListening(false);
+      setMicState((prev) => (prev === "processing" ? "processing" : "idle"));
+      return;
+    }
+
+    runningRef.current = false;
+    if (shouldRestartRef.current) {
+      if (restartTimeoutRef.current == null) {
+        restartTimeoutRef.current = setTimeout(() => {
+          restartTimeoutRef.current = null;
+          startListening();
+        }, RESTART_DELAY_MS) as unknown as number;
+      }
+      return;
+    }
+
+    setListening(false);
+    setMicState("error");
+  });
+
+  useSpeechRecognitionEvent("result", (event: any) => {
+    const first = event?.results?.[0];
+    const transcript = (first?.transcript ?? event?.transcript ?? "").trim();
+    const isFinal = event?.isFinal ?? first?.isFinal ?? false;
+
+    if (!transcript) return;
+
+    if (transcript === lastHandledRef.current) return;
+    lastTranscriptRef.current = transcript;
+
+    if (debounceTimeoutRef.current != null) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null;
+    }
+
+    const emit = () => {
+      if (lastTranscriptRef.current !== transcript) return;
+      if (lastHandledRef.current === transcript) return;
+      lastHandledRef.current = transcript;
+      setMicState("processing");
+      onText(transcript);
+    };
+
+    if (isFinal) {
+      emit();
+      return;
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      debounceTimeoutRef.current = null;
+      emit();
+    }, FINALIZE_DEBOUNCE_MS) as unknown as number;
+  });
 
   useEffect(() => {
     return () => {
-      stopListening();
+      shouldRestartRef.current = false;
+      if (restartTimeoutRef.current != null) {
+        clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = null;
+      }
+      clearTranscript();
+      if (runningRef.current) {
+        try {
+          ExpoSpeechRecognitionModule.stop();
+        } catch {
+          // ignore
+        }
+      }
     };
   }, []);
 
@@ -152,5 +226,6 @@ export function useWhisperRecognition(
     listening,
     startListening,
     stopListening,
+    abortListening,
   };
 }

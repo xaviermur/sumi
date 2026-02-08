@@ -8,6 +8,7 @@ import type { Operation } from "../core/types/operation";
 import type { HelpSectionId } from "./HelpScreen";
 import { MicState } from "@/core/types/audio";
 import { GameMode } from "@/core/types/game";
+import { useI18n } from "@/i18n/I18nProvider";
 
 // Tipo del resultado de una operación en la partida
 interface GameResult extends Operation {
@@ -83,6 +84,7 @@ export default function GameScreenLayout(props: GameScreenLayoutProps) {
     durationSeconds,
     onOpenHelp,
   } = props;
+  const { strings } = useI18n();
 
   const wrongAnswers = results.filter((r) => !r.success);
   const { width } = useWindowDimensions();
@@ -121,7 +123,7 @@ export default function GameScreenLayout(props: GameScreenLayoutProps) {
           phase={phase}
           totalScore={totalScore}
           onStartGame={onStartGame}
-          autoStartLabel="▶ Iniciar (activa micro)"
+          autoStartLabel={strings.game.startLabel}
           onIncreaseLevel={onIncreaseLevel}
           onDecreaseLevel={onDecreaseLevel}
           onOpenHelp={() => onOpenHelp("howToAnswer")}
@@ -166,7 +168,7 @@ export default function GameScreenLayout(props: GameScreenLayoutProps) {
                 <Text
                   style={{ fontSize: 20, fontWeight: "700", marginBottom: 10 }}
                 >
-                  ❌ Operaciones falladas
+                  {strings.game.wrongOpsTitle}
                 </Text>
                 {wrongAnswers.map((r, i) => (
                   <Text key={i} style={{ fontSize: 18, marginBottom: 6 }}>
@@ -180,8 +182,9 @@ export default function GameScreenLayout(props: GameScreenLayoutProps) {
                       : "÷"}{" "}
                     {r.num2} = {r.given}{" "}
                     <Text style={{ color: "red" }}>
-                      (correcto: {r.result}) —{" "}
-                      {r.points > 0 ? `+${r.points}` : `${r.points}`} pts
+                      ({strings.game.correctLabel}: {r.result}) —{" "}
+                      {r.points > 0 ? `+${r.points}` : `${r.points}`}{" "}
+                      {strings.game.points}
                     </Text>
                   </Text>
                 ))}

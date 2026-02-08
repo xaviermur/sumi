@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
 import { HelpSectionId } from "./HelpScreen";
 import type { OperationType } from "@/core/types/operation";
-import type { GameLanguage } from "@/core/types/game";
+import { useI18n } from "@/i18n/I18nProvider";
 
 interface FreeModeGameScreenProps {
   onExit: () => void;
   difficulty?: number;
   operationTypes: OperationType[];
-  language: GameLanguage;
   onOpenHelp: (section?: HelpSectionId) => void;
 }
 
@@ -18,9 +17,9 @@ export default function FreeModeGameScreen({
   onExit,
   difficulty = 1,
   operationTypes,
-  language,
   onOpenHelp,
 }: FreeModeGameScreenProps) {
+  const { lang, strings } = useI18n();
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
   const [isTop5, setIsTop5] = useState(false);
   const [currentDifficulty, setCurrentDifficulty] = useState(difficulty);
@@ -44,7 +43,7 @@ export default function FreeModeGameScreen({
   } = useGameCore({
     difficulty: currentDifficulty,
     operationTypes,
-    language,
+    language: lang,
     onFinish: handleFinish,
   });
 
@@ -65,15 +64,6 @@ export default function FreeModeGameScreen({
   const decreaseLevel = () => {
     setCurrentDifficulty((prev) => Math.max(prev - 1, 1));
   };
-
-  // 🎤 Auto-activar / desactivar el micrófono según la fase
-  useEffect(() => {
-    if (phase === "running") {
-      startListening();
-    } else {
-      stopListening();
-    }
-  }, [phase, startListening, stopListening]);
 
   return (
     <GameScreenLayout
@@ -100,7 +90,7 @@ export default function FreeModeGameScreen({
       difficulty={currentDifficulty}
       onIncreaseLevel={increaseLevel}
       onDecreaseLevel={decreaseLevel}
-      titleSummary="⏹️ Fin de la sesión"
+      titleSummary={strings.game.summaryFreeTitle}
       onOpenHelp={onOpenHelp}
     />
   );

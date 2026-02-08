@@ -4,6 +4,7 @@ import LottieView from "lottie-react-native";
 import LastResultPanel from "./LastResultPanel";
 import { Operation } from "../core/types/operation";
 import { MicState } from "@/core/types/audio";
+import { useI18n } from "@/i18n/I18nProvider";
 
 type RightPanelProps = {
   operation: Operation;
@@ -20,6 +21,7 @@ export default function RightPanel({
   feedbackId,
   lastResult,
 }: RightPanelProps) {
+  const { strings } = useI18n();
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const bgColor = useRef(new Animated.Value(0)).current;
@@ -87,18 +89,26 @@ export default function RightPanel({
           fontWeight: "600",
           marginBottom: 10,
           color:
-            micState === "idle"
-              ? "green"        // normalmente no se verá porque filtramos arriba
-              : micState === "listening"
-                ? "#e6b800"
-                : "#e67e22",
+            micState === "processing"
+              ? "#1565c0"
+              : micState === "recognizing"
+                ? "#8e24aa"
+                : micState === "listening"
+                  ? "#e6b800"
+                  : micState === "idle"
+                    ? "green"
+                    : "#e67e22",
         }}
       >
-        {micState === "idle"
-          ? "🎤 Esperando..."
-          : micState === "listening"
-            ? "🎧 Escuchando..."
-            : "⚠️ Error en el micrófono"}
+        {micState === "listening"
+          ? strings.mic.listening
+          : micState === "recognizing"
+            ? strings.mic.recognizing
+            : micState === "processing"
+              ? strings.mic.processing
+              : micState === "idle"
+                ? strings.mic.idle
+                : strings.mic.error}
       </Text>
 
       {/* Operación centrada */}

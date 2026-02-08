@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScoreRecord } from "../core/logic/recordsStorage";
 import { GameMode } from "@/core/types/game";
+import { useI18n } from "@/i18n/I18nProvider";
 
 interface GroupedRecords {
   key: string;
@@ -13,6 +14,7 @@ interface GroupedRecords {
 }
 
 export default function RecordsScreen({ onBack }: { onBack: () => void }) {
+  const { strings, t } = useI18n();
   const [groups, setGroups] = useState<GroupedRecords[]>([]);
 
   useEffect(() => {
@@ -80,12 +82,12 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
           color: "#333",
         }}
       >
-        🏆 Clasificaciones
+        {strings.records.title}
       </Text>
 
       {groups.length === 0 ? (
         <Text style={{ textAlign: "center", fontSize: 18, color: "#777" }}>
-          Aún no hay récords guardados.
+          {strings.records.empty}
         </Text>
       ) : (
         <ScrollView>
@@ -111,14 +113,14 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
                 }}
               >
                 <Text style={{ fontSize: 20, fontWeight: "700", color: "#333" }}>
-                  {g.mode === "free" ? "🆓 Modo libre" : "🛡️ Supervivencia"}
+                  {g.mode === "free" ? strings.records.free : strings.records.timeattack}
                 </Text>
                 <Text style={{ color: "#777", fontSize: 16 }}>
-                  Dificultad {g.difficulty}
+                  {t(strings.records.difficulty, { n: g.difficulty })}
                   {g.mode === "free"
                     ? g.duration
                       ? ` · ${g.duration}s`
-                      : " · sin tiempo"
+                      : ` · ${strings.records.noTime}`
                     : ""}
                 </Text>
               </View>
@@ -162,7 +164,7 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
                         textAlign: "left",
                       }}
                     >
-                      {r.score} pts
+                      {r.score} {strings.game.points}
                     </Text>
 
                     <Text
@@ -196,7 +198,7 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
         }}
       >
         <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
-          ⬅️ Volver
+          {strings.records.back}
         </Text>
       </TouchableOpacity>
     </View>

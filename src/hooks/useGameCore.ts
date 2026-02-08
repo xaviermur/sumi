@@ -8,6 +8,7 @@ import type { Operation, OperationType } from "../core/types/operation";
 import type { GameLanguage } from "../core/types/game";
 import type { MicState } from "@/core/types/audio";
 import { parseNumberMultilang } from "../utils/parseNumberMultilang";
+import { useI18n } from "@/i18n/I18nProvider";
 
 // --------------------------------------------------
 // Tipos
@@ -65,6 +66,7 @@ export function useGameCore({
   language = "es",
   onFinish,
 }: UseGameCoreOptions): UseGameCoreReturn {
+  const { strings, t } = useI18n();
 
   const [operation, setOperation] = useState<Operation>(
     generateOperation({ difficulty, type: operationTypes })
@@ -97,6 +99,7 @@ export function useGameCore({
   const {
     startListening,
     stopListening,
+    abortListening,
     micState,
     listening,
   } = useWhisperRecognition(handleStableSpeech, language);
@@ -109,13 +112,31 @@ export function useGameCore({
     if (opCooldownRef.current) return;
     if (opLockRef.current) return;
 
-    const number = parseNumberMultilang(text, language);
+    let number = parseNumberMultilang(text, language);
     if (number == null || Number.isNaN(number)) return;
 
+    const expected = operation.result;
+    if (number !== expected && expected >= 0 && expected <= 9) {
+      const repeated = getRepeatedDigitFromText(text);
+      if (repeated !== null && repeated === expected) {
+        number = expected;
+      }
+    }
+
     opLockRef.current = true;
-    stopListening(); // paramos Whisper antes de procesar
+    abortListening?.(); // cortar reconocimiento y limpiar buffer
 
     processAnswer(number);
+  }
+
+  function getRepeatedDigitFromText(text: string): number | null {
+    const digits = text.replace(/[^0-9]/g, " ").trim();
+    if (!digits) return null;
+    const parts = digits.split(/\s+/);
+    const last = parts[parts.length - 1];
+    const match = last.match(/^(\d)\1+$/);
+    if (!match) return null;
+    return Number(match[1]);
   }
 
   // --------------------------------------------------
@@ -125,7 +146,9 @@ export function useGameCore({
     const expected = operation.result;
     const ok = num === expected;
 
-    setFeedback(ok ? "✅ ¡Correcto!" : `❌ Incorrecto (${expected})`);
+    setFeedback(
+      ok ? strings.game.feedbackCorrect : t(strings.game.feedbackWrong, { n: expected })
+    );
     setFeedbackId(id => id + 1);
 
     if (ok) setCorrect(n => n + 1);

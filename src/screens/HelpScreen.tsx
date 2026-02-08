@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { MotiImage, MotiView, AnimatePresence } from "moti";
-import { Dimensions } from "react-native";
-const { width, height } = Dimensions.get("window");
+import { useI18n } from "@/i18n/I18nProvider";
+
+const { width } = Dimensions.get("window");
 
 export type HelpSectionId = "intro" | "modes" | "levels" | "howToAnswer" | "summary";
 
@@ -18,49 +19,50 @@ interface HelpSection {
   text: string;
 }
 
-const helpSections: HelpSection[] = [
-  {
-    id: "intro",
-    title: "Introducción",
-    icon: "👋",
-    text:
-      "Soy Osiris y te enseñaré cómo jugar. Resolverás operaciones de matemáticas usando tu voz. ¡Es fácil y divertido!",
-  },
-  {
-    id: "modes",
-    title: "Modos de juego",
-    icon: "🎮",
-    text:
-      "🆓 Modo libre: Practica sin límite de tiempo. Puedes terminar cuando quieras.\n🛡️ Supervivencia: Tienes 100 segundos para resolver el mayor número de operaciones.",
-  },
-  {
-    id: "levels",
-    title: "Niveles de dificultad",
-    icon: "📈",
-    text:
-      "Dificultad 1️⃣: Sumas y restas fáciles con números del 0 al 9. Algunas operaciones con llevar o prestar.\n\n" +
-      "Dificultad 2️⃣: Operaciones con dos cifras pequeñas (hasta 25). Puede aparecer algún acarreo.\n\n" +
-      "Dificultad 3️⃣: Sumas y restas con múltiplos de 5 o 10 (hasta 50). Mejora tu velocidad mental.\n\n" +
-      "Dificultad 4️⃣: Sumas y restas de dos cifras completas, con resultados hasta 99. Más acarreos.\n\n" +
-      "Dificultad 5️⃣: Operaciones de dos y tres cifras, con varios acarreos o préstamos. ¡El reto final!",
-  },
-  {
-    id: "howToAnswer",
-    title: "Cómo responder",
-    icon: "🎙️",
-    text:
-      "Di primero la palabra mágica y luego el número.\nEjemplo: “Resultado 25”.\n\nEspañol: RESULTADO\nCatalà: RESULTAT\nEnglish: RESULT\n\nSi el juego no te entiende, repítelo despacito.",
-  },
-  {
-    id: "summary",
-    title: "Fin del juego",
-    icon: "🏁",
-    text:
-      "Al final del juego verás un resumen con tus aciertos, errores y puntuación total. ¡Así podrás mejorar tus récords! 🏆",
-  },
-];
+const helpIcons: Record<HelpSectionId, string> = {
+  intro: "👋",
+  modes: "🎮",
+  levels: "📈",
+  howToAnswer: "🎙️",
+  summary: "🏁",
+};
 
 export default function HelpScreen({ onBack, startSection = "intro" }: HelpScreenProps) {
+  const { strings } = useI18n();
+
+  const helpSections: HelpSection[] = [
+    {
+      id: "intro",
+      title: strings.help.sections.intro.title,
+      icon: helpIcons.intro,
+      text: strings.help.sections.intro.text,
+    },
+    {
+      id: "modes",
+      title: strings.help.sections.modes.title,
+      icon: helpIcons.modes,
+      text: strings.help.sections.modes.text,
+    },
+    {
+      id: "levels",
+      title: strings.help.sections.levels.title,
+      icon: helpIcons.levels,
+      text: strings.help.sections.levels.text,
+    },
+    {
+      id: "howToAnswer",
+      title: strings.help.sections.howToAnswer.title,
+      icon: helpIcons.howToAnswer,
+      text: strings.help.sections.howToAnswer.text,
+    },
+    {
+      id: "summary",
+      title: strings.help.sections.summary.title,
+      icon: helpIcons.summary,
+      text: strings.help.sections.summary.text,
+    },
+  ];
+
   const [currentSection, setCurrentSection] = useState<HelpSection>(
     helpSections.find((s) => s.id === startSection) ?? helpSections[0]
   );
@@ -68,12 +70,11 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
   useEffect(() => {
     const section = helpSections.find((s) => s.id === startSection);
     if (section) setCurrentSection(section);
-  }, [startSection]);
+  }, [startSection, strings]);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f9f5e7", padding: 20 }}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* 🧠 Título */}
         <Text
           style={{
             fontSize: 32,
@@ -83,10 +84,9 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
             color: "#333",
           }}
         >
-          📘 Ayuda
+          {strings.help.title}
         </Text>
 
-        {/* 📚 Botones de secciones */}
         <View
           style={{
             flexDirection: "row",
@@ -129,7 +129,6 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
           })}
         </View>
 
-        {/* 🐾 Osiris + texto */}
         <View
           style={{
             flexDirection: "row",
@@ -142,7 +141,6 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
             shadowRadius: 5,
           }}
         >
-          {/* Columna izquierda - Osiris */}
           <View style={{ flex: 1, alignItems: "center" }}>
             <MotiImage
               source={require("../../assets/osiris.png")}
@@ -155,16 +153,15 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
                 repeatReverse: true,
               }}
               style={{
-                width: width * 0.35,       // ocupa aprox. 35% del ancho de pantalla
+                width: width * 0.35,
                 height: undefined,
-                aspectRatio: 533 / 800,    // mantiene proporción original
+                aspectRatio: 533 / 800,
                 resizeMode: "contain",
                 borderRadius: 16,
               }}
             />
           </View>
 
-          {/* Columna derecha - texto */}
           <View style={{ flex: 2, paddingLeft: 15 }}>
             <AnimatePresence exitBeforeEnter>
               <MotiView
@@ -193,7 +190,6 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
         </View>
       </ScrollView>
 
-      {/* 🔙 Botón volver */}
       <TouchableOpacity
         onPress={onBack}
         style={{
@@ -206,7 +202,7 @@ export default function HelpScreen({ onBack, startSection = "intro" }: HelpScree
         }}
       >
         <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>
-          ⬅️ Volver
+          {strings.records.back}
         </Text>
       </TouchableOpacity>
     </View>

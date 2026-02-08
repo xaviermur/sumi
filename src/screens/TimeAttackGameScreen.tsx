@@ -1,10 +1,10 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
 import { HelpSectionId } from "./HelpScreen";
 import type { OperationType } from "@/core/types/operation";
-import type { GameLanguage } from "@/core/types/game";
+import { useI18n } from "@/i18n/I18nProvider";
 
 const ROUND_SECONDS = 100;
 
@@ -12,7 +12,6 @@ interface TimeAttackGameScreenProps {
   onExit: () => void;
   difficulty?: number;
   operationTypes: OperationType[];
-  language: GameLanguage;
   onOpenHelp: (section?: HelpSectionId) => void;
 }
 
@@ -20,9 +19,9 @@ export default function TimeAttackGameScreen({
   onExit,
   difficulty = 1,
   operationTypes,
-  language,
   onOpenHelp,
 }: TimeAttackGameScreenProps) {
+  const { lang, strings } = useI18n();
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
   const [isTop5, setIsTop5] = useState(false);
 
@@ -58,20 +57,9 @@ export default function TimeAttackGameScreen({
     difficulty,
     duration: ROUND_SECONDS,
     operationTypes,
-    language,
+    language: lang,
     onFinish: handleFinish,
   });
-
-  // 🔊 Automatizar inicio/parada de escucha según la fase del juego
-  useEffect(() => {
-    // Cuando empieza la partida, activar el micrófono
-    if (phase === "running") {
-      startListening();
-    } else {
-      // En cualquier otra fase (countdown, summary, etc.) lo paramos
-      stopListening();
-    }
-  }, [phase, listening, startListening, stopListening]);
 
   return (
     <GameScreenLayout
@@ -95,7 +83,7 @@ export default function TimeAttackGameScreen({
       startListening={startListening}
       stopListening={stopListening}
       difficulty={difficulty}
-      titleSummary="⏱️ ¡Tiempo terminado!"
+      titleSummary={strings.game.summaryTimeTitle}
       durationSeconds={ROUND_SECONDS}
       onOpenHelp={onOpenHelp}
     />
