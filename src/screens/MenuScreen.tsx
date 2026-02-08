@@ -1,31 +1,14 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Switch,
-  ScrollView,
-} from "react-native";
+import React, { useMemo, useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { GameMode } from "@/core/types/game";
-
-// ─────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────
-
-export interface CustomOptions {
-  type: ("sum" | "sub")[];
-  range1: [number, number];
-  range2: [number, number];
-  overflowDigits: [number, number];
-  resultRange: [number, number];
-}
+import type { OperationType } from "@/core/types/operation";
+import { GameLanguage, GameMode } from "@/core/types/game";
 
 export interface StartGameOptions {
-  mode: GameMode | null;
-  difficulty?: number;
-  duration: number;
-  customOptions?: CustomOptions;
+  mode: GameMode;
+  difficulty: number;
+  operationTypes: OperationType[];
+  language: GameLanguage;
 }
 
 export interface MenuScreenProps {
@@ -34,95 +17,40 @@ export interface MenuScreenProps {
   onOpenHelp: () => void;
 }
 
-// ─────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────
+type OperationChoice = "sum" | "sub" | "sum_sub";
+
+const difficultyLabels = ["Muy fácil", "Fácil", "Media", "Difícil", "Experto"];
 
 export default function MenuScreen({
   onStartGame,
   onShowRecords,
   onOpenHelp,
 }: MenuScreenProps) {
+  const [operationChoice, setOperationChoice] = useState<OperationChoice | null>(
+    null
+  );
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [difficulty, setDifficulty] = useState<number>(1);
-  const [duration, setDuration] = useState<number>(60);
+  const [language, setLanguage] = useState<GameLanguage>("es");
 
-  const [sumEnabled, setSumEnabled] = useState(true);
-  const [subEnabled, setSubEnabled] = useState(false);
-  const [carryEnabled, setCarryEnabled] = useState(false);
+  const operationTypes = useMemo<OperationType[]>(() => {
+    if (operationChoice === "sum") return ["sum"];
+    if (operationChoice === "sub") return ["sub"];
+    if (operationChoice === "sum_sub") return ["sum", "sub"];
+    return ["sum", "sub"];
+  }, [operationChoice]);
 
-  const [selectedOperatorType, setSelectedOperatorType] = useState<
-    "small" | "medium" | "large" | "xlarge" | "unlimited"
-  >("small");
-
-  // ----------------------------------
-  // CONFIG RANGOS
-  // ----------------------------------
-
-  const operatorRanges: Record<
-    "small" | "medium" | "large" | "xlarge" | "unlimited",
-    [number, number]
-  > = {
-    small: [1, 9],
-    medium: [10, 20],
-    large: [20, 50],
-    xlarge: [50, 100],
-    unlimited: [100, 1000],
-  };
-
-  const overflowMinByType: Record<
-    "small" | "medium" | "large" | "xlarge" | "unlimited",
-    number
-  > = {
-    small: 1,
-    medium: 2,
-    large: 2,
-    xlarge: 2,
-    unlimited: 3,
-  };
-
-  // ----------------------------------
-  // 🚀 handleStart
-  // ----------------------------------
+  const canStart = Boolean(operationChoice && selectedMode);
 
   const handleStart = () => {
-    if (selectedMode === "custom") {
-      const types: ("sum" | "sub")[] = [];
-      if (sumEnabled) types.push("sum");
-      if (subEnabled) types.push("sub");
-
-      const baseRange = operatorRanges[selectedOperatorType];
-      const overflowMin = overflowMinByType[selectedOperatorType];
-
-      const customOptions: CustomOptions = {
-        type: types.length ? types : ["sum"],
-        range1: baseRange,
-        range2: baseRange,
-        overflowDigits: carryEnabled
-          ? [overflowMin, overflowMin]
-          : [0, 0],
-        resultRange: [baseRange[0], baseRange[1] * 2],
-      };
-
-      onStartGame({
-        mode: "custom",
-        duration,
-        customOptions,
-      });
-
-      return;
-    }
-
+    if (!operationChoice || !selectedMode) return;
     onStartGame({
       mode: selectedMode,
       difficulty,
-      duration,
+      operationTypes,
+      language,
     });
   };
-
-  // ----------------------------------
-  // UI
-  // ----------------------------------
 
   return (
     <ScrollView
@@ -132,7 +60,6 @@ export default function MenuScreen({
         backgroundColor: "#f2f2f2",
       }}
     >
-      {/* Título */}
       <Text style={{ fontSize: 32, fontWeight: "700", marginBottom: 30 }}>
         🧮 CEREBRiN
       </Text>
@@ -151,40 +78,40 @@ export default function MenuScreen({
         </TouchableOpacity>
       </View>
 
-      {/* Selección de modo */}
+      {/* 1) Tipo de operaciones */}
       <View
         style={{
           backgroundColor: "#fff",
           borderRadius: 12,
           padding: 20,
           width: "90%",
-          marginBottom: 25,
+          marginBottom: 20,
         }}
       >
-        <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
-          🎮 Modo de juego
+        <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 12 }}>
+          1. Tipo de operaciones
         </Text>
 
         {[
-          { key: "free", label: "Modo libre (1 o 2 minutos)" },
-          { key: "timeattack", label: "Contrarreloj (1 minuto fijo)" },
-          { key: "custom", label: "Personalizado (elige tus reglas)" },
+          { key: "sum", label: "SUMAS" },
+          { key: "sub", label: "RESTAS" },
+          { key: "sum_sub", label: "SUMAS Y RESTAS" },
         ].map((opt) => (
           <TouchableOpacity
             key={opt.key}
-            onPress={() => setSelectedMode(opt.key as GameMode)}
+            onPress={() => setOperationChoice(opt.key as OperationChoice)}
             style={{
               padding: 10,
               borderRadius: 8,
               marginBottom: 8,
               backgroundColor:
-                selectedMode === opt.key ? "#4caf50" : "#eee",
+                operationChoice === opt.key ? "#4caf50" : "#eee",
             }}
           >
             <Text
               style={{
                 fontSize: 18,
-                color: selectedMode === opt.key ? "#fff" : "#333",
+                color: operationChoice === opt.key ? "#fff" : "#333",
               }}
             >
               {opt.label}
@@ -193,19 +120,62 @@ export default function MenuScreen({
         ))}
       </View>
 
-      {/* Dificultad */}
-      {selectedMode !== "custom" && (
+      {/* 2) Modo de juego */}
+      {operationChoice && (
         <View
           style={{
             backgroundColor: "#fff",
             borderRadius: 12,
             padding: 20,
             width: "90%",
-            marginBottom: 25,
+            marginBottom: 20,
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
-            ⚙️ Dificultad
+          <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 12 }}>
+            2. Modo de juego
+          </Text>
+
+          {[
+            { key: "free", label: "LIBRE (sin tiempo)" },
+            { key: "timeattack", label: "SUPERVIVENCIA (100 s)" },
+          ].map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              onPress={() => setSelectedMode(opt.key as GameMode)}
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                marginBottom: 8,
+                backgroundColor:
+                  selectedMode === opt.key ? "#2196f3" : "#eee",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  color: selectedMode === opt.key ? "#fff" : "#333",
+                }}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* 3) Dificultad */}
+      {operationChoice && selectedMode && (
+        <View
+          style={{
+            backgroundColor: "#fff",
+            borderRadius: 12,
+            padding: 20,
+            width: "90%",
+            marginBottom: 20,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 12 }}>
+            3. Nivel
           </Text>
 
           {[1, 2, 3, 4, 5].map((n) => (
@@ -216,7 +186,7 @@ export default function MenuScreen({
                 padding: 10,
                 borderRadius: 8,
                 marginBottom: 8,
-                backgroundColor: difficulty === n ? "#2196f3" : "#eee",
+                backgroundColor: difficulty === n ? "#ff9800" : "#eee",
               }}
             >
               <Text
@@ -225,134 +195,60 @@ export default function MenuScreen({
                   color: difficulty === n ? "#fff" : "#333",
                 }}
               >
-                {["Muy fácil", "Fácil", "Media", "Difícil", "Experto"][n - 1]}
+                {difficultyLabels[n - 1]}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* Duración */}
-      {(selectedMode === "free" || selectedMode === "custom") && (
-        <View
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: 12,
-            padding: 20,
-            width: "90%",
-            marginBottom: 25,
-          }}
-        >
-          <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
-            ⏱️ Duración
-          </Text>
+      {/* Idioma */}
+      <View
+        style={{
+          backgroundColor: "#fff",
+          borderRadius: 12,
+          padding: 20,
+          width: "90%",
+          marginBottom: 20,
+        }}
+      >
+        <Text style={{ fontSize: 20, fontWeight: "600", marginBottom: 12 }}>
+          Idioma
+        </Text>
 
-          {[60, 120].map((sec) => (
-            <TouchableOpacity
-              key={sec}
-              onPress={() => setDuration(sec)}
+        {[
+          { key: "es", label: "Español" },
+          { key: "ca", label: "Català" },
+          { key: "en", label: "English" },
+        ].map((opt) => (
+          <TouchableOpacity
+            key={opt.key}
+            onPress={() => setLanguage(opt.key as GameLanguage)}
+            style={{
+              padding: 10,
+              borderRadius: 8,
+              marginBottom: 8,
+              backgroundColor: language === opt.key ? "#8bc34a" : "#eee",
+            }}
+          >
+            <Text
               style={{
-                padding: 10,
-                borderRadius: 8,
-                marginBottom: 8,
-                backgroundColor: duration === sec ? "#ff9800" : "#eee",
+                fontSize: 18,
+                color: language === opt.key ? "#fff" : "#333",
               }}
             >
-              <Text
-                style={{
-                  fontSize: 18,
-                  color: duration === sec ? "#fff" : "#333",
-                }}
-              >
-                {sec / 60} minuto{sec > 60 ? "s" : ""}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Config custom */}
-      {selectedMode === "custom" && (
-        <View
-          style={{
-            backgroundColor: "#fff",
-            borderRadius: 12,
-            padding: 20,
-            width: "90%",
-            marginBottom: 25,
-          }}
-        >
-          <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 15 }}>
-            ⚙️ Configuración personalizada
-          </Text>
-
-          {/* Sumas / Restas */}
-          <View
-            style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}
-          >
-            <Switch value={sumEnabled} onValueChange={setSumEnabled} />
-            <Text style={{ marginLeft: 8, fontSize: 16 }}>Sumas</Text>
-          </View>
-
-          <View
-            style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}
-          >
-            <Switch value={subEnabled} onValueChange={setSubEnabled} />
-            <Text style={{ marginLeft: 8, fontSize: 16 }}>Restas</Text>
-          </View>
-
-          {/* Llevadas */}
-          <View
-            style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}
-          >
-            <Switch value={carryEnabled} onValueChange={setCarryEnabled} />
-            <Text style={{ marginLeft: 8, fontSize: 16 }}>Incluir llevadas</Text>
-          </View>
-
-          {/* Tipos de operador */}
-          <Text style={{ fontSize: 18, fontWeight: "500", marginBottom: 10 }}>
-            Tipo de operadores
-          </Text>
-
-          {(
-            [
-              ["small", "Unidades (1–9)"],
-              ["medium", "Medianos (10–20)"],
-              ["large", "Mayores (20–50)"],
-              ["xlarge", "Más grandes (50–100)"],
-              ["unlimited", "Sin límite (100–1000)"],
-            ] as const
-          ).map(([key, label]) => (
-            <TouchableOpacity
-              key={key}
-              onPress={() => setSelectedOperatorType(key)}
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                marginBottom: 6,
-                backgroundColor:
-                  selectedOperatorType === key ? "#3b82f6" : "#eee",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  color: selectedOperatorType === key ? "#fff" : "#333",
-                }}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Botón comenzar */}
       <TouchableOpacity
         onPress={handleStart}
-        disabled={!selectedMode}
+        disabled={!canStart}
         style={{
-          backgroundColor: selectedMode ? "#4caf50" : "#aaa",
+          backgroundColor: canStart ? "#4caf50" : "#aaa",
           paddingVertical: 14,
           paddingHorizontal: 40,
           borderRadius: 10,

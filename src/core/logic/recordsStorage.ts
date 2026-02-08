@@ -19,7 +19,12 @@ export function getModeKey(
   difficulty: number,
   duration?: number
 ): ModeKey {
-  if (mode === "free") return `free_d${difficulty}_t${duration ?? 60}`;
+  if (mode === "free") {
+    if (typeof duration === "number" && duration > 0) {
+      return `free_d${difficulty}_t${duration}`;
+    }
+    return `free_d${difficulty}`;
+  }
   if (mode === "timeattack") return `timeattack_d${difficulty}`;
   return "unknown";
 }

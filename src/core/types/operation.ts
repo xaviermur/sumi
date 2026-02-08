@@ -5,6 +5,10 @@ export interface Operation {
   num2: number;
   opType: OperationType;
   result: number;
+  overflowCount?: number;
+  levelConfigId?: number;
+  difficulty?: number | null;
+  fallback?: boolean;
 }
 
 export interface LastResult extends Operation {

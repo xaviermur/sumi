@@ -1,115 +1,155 @@
-import { useState, useRef } from "react";
-import { VoiceProcessor } from "@picovoice/react-native-voice-processor";
+import { useEffect, useRef, useState } from "react";
+import { Audio } from "expo-av";
 import { useWhisper } from "../speech/WhisperProvider";
 import type { MicState } from "@/core/types/audio";
+import type { GameLanguage } from "@/core/types/game";
 
-const SILENCE_FRAMES = 12;      // ~0.2s de silencio
-const MIN_FRAMES = 20;          // evitar ruido / frase mínima
-const FRAME_LENGTH = 512;
 const SAMPLE_RATE = 16000;
+const BUFFER_SIZE = 2048;
+const SILENCE_THRESHOLD = 0.002;
+const SILENCE_FRAMES = 12;
 
-export function useWhisperRecognition(onText: (t: string) => void) {
+export function useWhisperRecognition(
+  onText: (t: string) => void,
+  language: GameLanguage = "es"
+) {
   const { transcribe, ready } = useWhisper();
 
   const [micState, setMicState] = useState<MicState>("idle");
   const [listening, setListening] = useState(false);
 
-  const bufferRef = useRef<Float32Array[]>([]);
-  const silenceRef = useRef(0);
-  const runningRef = useRef(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const pcmQueue = useRef<Float32Array[]>([]);
+  const silenceFrames = useRef(0);
+  const running = useRef(false);
 
-  // -------------------------------------------------
-  // Procesar frame PCM (number[] -> Float32Array)
-  // -------------------------------------------------
-  const onFrame = (frame: number[]) => {
-    if (!runningRef.current || !ready) return;
+  // ----------------------------------------------
+  // Convert Expo PCM -> Float32
+  // ----------------------------------------------
+  function onAudioFrame(data: Int16Array) {
+    if (!running.current) return;
 
-    // Normalizar a float32
-    const buf = new Float32Array(frame.length);
-    for (let i = 0; i < frame.length; i++) {
-      buf[i] = frame[i] / 32768;
+    const floats = new Float32Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      floats[i] = data[i] / 32768;
     }
 
-    bufferRef.current.push(buf);
+    pcmQueue.current.push(floats);
 
-    // RMS para detectar silencios
-    const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);
+    // RMS
+    const rms =
+      Math.sqrt(floats.reduce((s, v) => s + v * v, 0) / floats.length) || 0;
 
-    if (rms < 0.002) silenceRef.current++;
-    else silenceRef.current = 0;
+    if (rms < SILENCE_THRESHOLD) silenceFrames.current++;
+    else silenceFrames.current = 0;
 
-    // FIN de frase detectado
-    if (silenceRef.current >= SILENCE_FRAMES) {
+    // Fin de frase
+    if (silenceFrames.current >= SILENCE_FRAMES) {
       stopListening();
+      const audio = mergeBuffers(pcmQueue.current);
+      pcmQueue.current = [];
 
-      const audio = mergeBuffers(bufferRef.current);
-      bufferRef.current = [];
-
-      if (audio.length > MIN_FRAMES * FRAME_LENGTH) {
-        transcribe(audio).then(onText);
+      if (audio.length > 4000) {
+        transcribe(audio, SAMPLE_RATE, { language }).then(onText);
       }
     }
-  };
+  }
 
-  const mergeBuffers = (chunks: Float32Array[]) => {
+  function mergeBuffers(chunks: Float32Array[]) {
     const total = chunks.reduce((s, c) => s + c.length, 0);
     const out = new Float32Array(total);
     let offset = 0;
-
     for (const c of chunks) {
       out.set(c, offset);
       offset += c.length;
     }
     return out;
-  };
+  }
 
-  // -------------------------------------------------
-  // Arrancar grabación
-  // -------------------------------------------------
-  const startListening = async () => {
+  // ----------------------------------------------
+  // Start listening
+  // ----------------------------------------------
+  async function startListening() {
     if (!ready) return;
-    if (runningRef.current) return;
+    if (running.current) return;
 
-    // Permiso micrófono
-    const ok = await VoiceProcessor.instance.hasRecordAudioPermission();
-    if (!ok) {
-      console.warn("No hay permiso micrófono");
+    setMicState("listening");
+    setListening(true);
+    running.current = true;
+
+    pcmQueue.current = [];
+    silenceFrames.current = 0;
+
+    const { granted } = await Audio.requestPermissionsAsync();
+    if (!granted) {
+      console.warn("No permission for microphone");
       return;
     }
 
-    bufferRef.current = [];
-    silenceRef.current = 0;
+    const rec = new Audio.Recording();
 
-    runningRef.current = true;
-    setListening(true);
-    setMicState("listening");
+    await rec.prepareToRecordAsync({
+      isMeteringEnabled: false,
+      android: {
+        extension: ".wav",
+        sampleRate: SAMPLE_RATE,
+        numberOfChannels: 1,
+        bitRate: 16,
+        outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+        audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+      },
+      ios: {
+        extension: ".wav",
+        sampleRate: SAMPLE_RATE,
+        numberOfChannels: 1,
+        bitDepthHint: 16,
+        outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+        audioQuality: Audio.IOSAudioQuality.HIGH,
+      },
+    });
 
-    VoiceProcessor.instance.addFrameListener(onFrame);
+    rec.setOnRecordingStatusUpdate((status: any) => {
+      if (!status || !status.isRecording || !status.frameBuffer) return;
 
-    // 🔥 TU API REAL: start(frameLength, sampleRate)
-    await VoiceProcessor.instance.start(FRAME_LENGTH, SAMPLE_RATE);
-  };
+      const buffer = new Int16Array(status.frameBuffer);
+      onAudioFrame(buffer);
+    });
 
-  // -------------------------------------------------
-  // Parar grabación
-  // -------------------------------------------------
-  const stopListening = async () => {
-    if (!runningRef.current) return;
+    await rec.startAsync();
+    recordingRef.current = rec;
+  }
 
-    runningRef.current = false;
+  // ----------------------------------------------
+  // Stop listening
+  // ----------------------------------------------
+  async function stopListening() {
+    if (!running.current) return;
+
+    running.current = false;
     setListening(false);
     setMicState("idle");
 
-    // 🔥 Debe remover frameListener específico
-    VoiceProcessor.instance.removeFrameListener(onFrame);
+    const rec = recordingRef.current;
+    if (!rec) return;
 
-    await VoiceProcessor.instance.stop();
-  };
+    try {
+      await rec.stopAndUnloadAsync();
+    } catch {
+      /* ignore */
+    }
+    recordingRef.current = null;
+  }
+
+  useEffect(() => {
+    return () => {
+      stopListening();
+    };
+  }, []);
 
   return {
     ready,
-    listening,
     micState,
+    listening,
     startListening,
     stopListening,
   };

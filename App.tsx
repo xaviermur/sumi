@@ -3,18 +3,18 @@ import { View } from "react-native";
 import MenuScreen from "./src/screens/MenuScreen";
 import FreeModeGameScreen from "./src/screens/FreeModeGameScreen";
 import TimeAttackGameScreen from "./src/screens/TimeAttackGameScreen";
-import CustomModeGameScreen from "./src/screens/CustomModeGameScreen";
 import RecordsScreen from "./src/screens/RecordsScreen";
 import HelpScreen, { HelpSectionId } from "./src/screens/HelpScreen";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { GameMode } from "@/core/types/game";
-import { CheetahProvider } from "@/speech/CheetahProvider";
+import { GameMode, GameLanguage } from "@/core/types/game";
+import type { OperationType } from "@/core/types/operation";
+import { WhisperProvider } from "@/speech/WhisperProvider"; // 👈 NUEVO
 
 type GameOptions = {
   mode: GameMode;
-  difficulty?: number;
-  duration: number;
-  customOptions?: any;
+  difficulty: number;
+  operationTypes: OperationType[];
+  language: GameLanguage;
 };
 
 export default function App() {
@@ -54,7 +54,7 @@ export default function App() {
 
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }}>
-        <CheetahProvider>
+        <WhisperProvider>
           <View style={{ flex: 1 }}>
             {/* 🏠 MENÚ PRINCIPAL */}
             {screen === "menu" && (
@@ -82,8 +82,9 @@ export default function App() {
                 {options.mode === "free" && (
                   <FreeModeGameScreen
                     onExit={handleExitGame}
-                    duration={options.duration}
                     difficulty={options.difficulty}
+                    operationTypes={options.operationTypes}
+                    language={options.language}
                     onOpenHelp={handleOpenHelp}
                   />
                 )}
@@ -92,22 +93,15 @@ export default function App() {
                   <TimeAttackGameScreen
                     onExit={handleExitGame}
                     difficulty={options.difficulty}
-                    onOpenHelp={handleOpenHelp}
-                  />
-                )}
-
-                {options.mode === "custom" && (
-                  <CustomModeGameScreen
-                    onExit={handleExitGame}
-                    duration={options.duration}
-                    customOptions={options.customOptions}
+                    operationTypes={options.operationTypes}
+                    language={options.language}
                     onOpenHelp={handleOpenHelp}
                   />
                 )}
               </>
             )}
           </View>
-        </CheetahProvider>
+        </WhisperProvider>
       </SafeAreaView>
     </SafeAreaProvider>
   );

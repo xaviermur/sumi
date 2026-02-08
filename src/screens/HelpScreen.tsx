@@ -31,7 +31,7 @@ const helpSections: HelpSection[] = [
     title: "Modos de juego",
     icon: "🎮",
     text:
-      "🧮 Modo libre: Elige la dificultad y el tiempo.\n⏱️ Contrarreloj: Tienes 1 minuto para resolver el mayor número de operaciones.\n🎯 Personalizado: Crea tu propio reto.",
+      "🆓 Modo libre: Practica sin límite de tiempo. Puedes terminar cuando quieras.\n🛡️ Supervivencia: Tienes 100 segundos para resolver el mayor número de operaciones.",
   },
   {
     id: "levels",
@@ -49,7 +49,7 @@ const helpSections: HelpSection[] = [
     title: "Cómo responder",
     icon: "🎙️",
     text:
-      "Di primero la palabra mágica 'RESULTADO' y luego el número.\nEjemplo: “Resultado 25”.\nSi el juego no te entiende, repítelo despacito 🗣️.",
+      "Di primero la palabra mágica y luego el número.\nEjemplo: “Resultado 25”.\n\nEspañol: RESULTADO\nCatalà: RESULTAT\nEnglish: RESULT\n\nSi el juego no te entiende, repítelo despacito.",
   },
   {
     id: "summary",

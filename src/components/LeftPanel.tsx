@@ -15,6 +15,7 @@ export interface LeftPanelProps {
   elapsed: string;
   onReset: () => void;
   onExit: () => void;
+  onFinishGame?: () => void;
   mode: GameMode;
   difficulty?: number;
   phase: "ready" | "running" | "finished";
@@ -39,6 +40,7 @@ export default function LeftPanel({
   elapsed,
   onReset,
   onExit,
+  onFinishGame,
   mode,
   difficulty,
   phase,
@@ -51,6 +53,7 @@ export default function LeftPanel({
 }: LeftPanelProps) {
   const isRunning = phase === "running";
   const isFinished = phase === "finished";
+  const isFreeMode = mode === "free";
 
   return (
     <View
@@ -72,8 +75,8 @@ export default function LeftPanel({
             {mode === "free"
               ? "🆓 Modo libre"
               : mode === "timeattack"
-              ? "⏱️ Contrarreloj"
-              : "⚙️ Modo personalizado"}
+              ? "🛡️ Supervivencia"
+              : "🛠️ Modo"}
           </Text>
 
           {difficulty !== undefined && (
@@ -95,7 +98,11 @@ export default function LeftPanel({
             {elapsed}
           </Text>
           <Text style={{ fontSize: 16, color: "#777" }}>
-            {isRunning ? "Tiempo restante" : "Listo para comenzar"}
+            {isRunning
+              ? isFreeMode
+                ? "Tiempo ilimitado"
+                : "Tiempo restante"
+              : "Listo para comenzar"}
           </Text>
         </View>
 
@@ -158,7 +165,7 @@ export default function LeftPanel({
 
         {isRunning && (
           <TouchableOpacity
-            onPress={stopListening}
+            onPress={listening ? stopListening : startListening}
             style={{
               backgroundColor: listening ? "#f44336" : "#4caf50",
               paddingVertical: 12,
@@ -170,6 +177,21 @@ export default function LeftPanel({
             <Text style={{ color: "#fff", fontSize: 18 }}>
               {listening ? "🎙️ Detener micro" : "🎧 Reanudar micro"}
             </Text>
+          </TouchableOpacity>
+        )}
+
+        {isRunning && isFreeMode && onFinishGame && (
+          <TouchableOpacity
+            onPress={onFinishGame}
+            style={{
+              backgroundColor: "#8e24aa",
+              paddingVertical: 12,
+              borderRadius: 10,
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 18 }}>⏹️ Finalizar</Text>
           </TouchableOpacity>
         )}
 

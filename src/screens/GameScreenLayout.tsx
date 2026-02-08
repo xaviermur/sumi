@@ -40,6 +40,7 @@ interface GameScreenLayoutProps {
   onStartGame: () => void;
   onReset: () => void;
   onExit: () => void;
+  onFinishGame?: () => void;
   startListening: () => void;
   stopListening: () => void;
 
@@ -72,6 +73,7 @@ export default function GameScreenLayout(props: GameScreenLayoutProps) {
     onStartGame,
     onReset,
     onExit,
+    onFinishGame,
     startListening,
     stopListening,
     difficulty,
@@ -113,6 +115,7 @@ export default function GameScreenLayout(props: GameScreenLayoutProps) {
           elapsed={elapsed}
           onReset={onReset}
           onExit={onExit}
+          onFinishGame={onFinishGame}
           mode={mode}
           difficulty={difficulty}
           phase={phase}

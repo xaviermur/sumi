@@ -1,44 +1,70 @@
-import { useEffect, useRef } from "react";
-import { VoiceProcessor } from "@picovoice/react-native-voice-processor";
+import { useEffect } from "react";
+import { mediaDevices, MediaStreamTrack } from "react-native-webrtc";
 
 type Options = {
-  frameLength?: number;
-  sampleRate?: number;
-  onFrame: (pcm: Float32Array) => void;  // ← ESTA ES LA CALLBACK
+  onFrame: (f: Float32Array) => void;
 };
 
-export function useWhisperAudioStream({
-  frameLength = 512,
-  sampleRate = 16000,
-  onFrame,            // ← AQUÍ SE RECIBE CORRECTAMENTE
-}: Options) {
-  const isRunning = useRef(false);
-
+export function useWhisperAudioStream({ onFrame }: Options) {
   useEffect(() => {
-    if (isRunning.current) return;
-    isRunning.current = true;
+    let stopped = false;
+    let track: MediaStreamTrack | null = null;
 
-    // 🔊 Listener correcto: recibe number[]
-    function onAudioFrame(frame: number[]) {
-      // Convertir number[] → Float32Array normalizada
-      const floatBuf = new Float32Array(frame.length);
-      for (let i = 0; i < frame.length; i++) {
-        floatBuf[i] = frame[i] / 32768; // normalización
+    async function init() {
+      try {
+        const stream = await mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            sampleRate: 16000,
+            channelCount: 1,
+          },
+          video: false,
+        });
+
+        track = stream.getAudioTracks()[0];
+
+        const ctx = new AudioContext({ sampleRate: 16000 });
+        const source = ctx.createMediaStreamSource(stream);
+
+        const blob = new Blob([
+          `
+            class PCMWorklet extends AudioWorkletProcessor {
+              process(inputs) {
+                const input = inputs[0][0];
+                if (input) {
+                  this.port.postMessage(input.slice(0));
+                }
+                return true;
+              }
+            }
+            registerProcessor('pcm-worklet', PCMWorklet);
+          `,
+        ]);
+
+        const workletUrl = URL.createObjectURL(blob);
+        await ctx.audioWorklet.addModule(workletUrl);
+
+        const node = new AudioWorkletNode(ctx, "pcm-worklet");
+
+        node.port.onmessage = (ev) => {
+          if (!stopped) onFrame(ev.data);
+        };
+
+        source.connect(node).connect(ctx.destination);
+      } catch (err) {
+        console.error("useWhisperAudioStream error", err);
       }
-
-      // 👇 Ahora sí existe: se recibió arriba en (onFrame)
-      onFrame(floatBuf);
     }
 
-    const vp = VoiceProcessor.instance;
-
-    vp.addFrameListener(onAudioFrame);
-    vp.start(frameLength, sampleRate);
+    init();
 
     return () => {
-      vp.stop().catch(() => {});
-      vp.removeFrameListener(onAudioFrame);
-      isRunning.current = false;
+      stopped = true;
+      try {
+        track?.stop();
+      } catch {}
     };
-  }, [frameLength, sampleRate, onFrame]);
+  }, [onFrame]);
 }

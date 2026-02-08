@@ -1,15 +1,16 @@
 import { useRef } from "react";
 import { useWhisperAudioStream } from "./useWhisperAudioStream";
-import { useWhisperCtx } from "../speech/WhisperProvider";
+import { useWhisper } from "../speech/WhisperProvider";
 import { parseNumberMultilang } from "../utils/parseNumberMultilang";
+import type { GameLanguage } from "@/core/types/game";
 
 type UseSpokenNumberOptions = {
-  lang: "es" | "ca" | "en" | "fr";
+  lang: GameLanguage;
   onNumber: (n: number) => void;   // aquí conectas con tu lógica del juego
 };
 
 export function useSpokenNumber({ lang, onNumber }: UseSpokenNumberOptions) {
-  const { whisper } = useWhisperCtx();
+  const { transcribe, ready } = useWhisper();
   const pcmBufferRef = useRef<Float32Array[]>([]);
 
   useWhisperAudioStream({
@@ -19,20 +20,15 @@ export function useSpokenNumber({ lang, onNumber }: UseSpokenNumberOptions) {
   });
 
   async function transcribeNow() {
-    if (!whisper) return;
+    if (!ready) return;
 
     // Junta todos los frames en un único Float32Array
     const all = concatFloat32Arrays(pcmBufferRef.current);
     pcmBufferRef.current = [];
 
-    // Transcribe desde datos en memoria (modo sencillo: archivo temporal → transcribe)
-    const options = { language: lang };
-    const { stop, promise } = whisper.transcribeData(all, 16000, options);
-    const { result } = await promise;
-    stop?.();
-
-    const text = result?.text?.toLowerCase().trim() ?? "";
-    const n = parseNumberMultilang(text, lang);
+    const text = await transcribe(all, 16000, { language: lang });
+    const normalized = text?.toLowerCase().trim() ?? "";
+    const n = parseNumberMultilang(normalized, lang);
     if (n != null) {
       onNumber(n);
     }

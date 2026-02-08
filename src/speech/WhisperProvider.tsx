@@ -1,57 +1,90 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { pipeline, env } from "@xenova/transformers";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
+import { pipeline, env, Pipeline } from "@xenova/transformers";
+import type { GameLanguage } from "@/core/types/game";
 
-// Runtime optimizations
-env.allowLocalModels = true;
-env.backends.onnx.wasm.numThreads = 1;
+type TranscribeFn = (
+  audio: Float32Array,
+  sampleRate: number,
+  opts?: { language?: GameLanguage }
+) => Promise<string>;
 
-interface WhisperContextType {
-  transcribe: (audio: Float32Array) => Promise<string>;
+interface WhisperContextValue {
   ready: boolean;
+  transcribe: TranscribeFn;
 }
 
-const WhisperCtx = createContext<WhisperContextType>({
-  transcribe: async () => "",
+const WhisperCtx = createContext<WhisperContextValue>({
   ready: false,
+  // fallback muy simple
+  transcribe: async () => "",
 });
 
-export function WhisperProvider({ children }: { children: React.ReactNode }) {
+export function WhisperProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [asr, setAsr] = useState<any>(null);
+  const pipelineRef = useRef<Pipeline | null>(null);
 
   useEffect(() => {
-    async function load() {
-      console.log("📥 Cargando modelo Whisper tiny int8...");
-      
-      const pipelineASR = await pipeline(
-        "automatic-speech-recognition",
-        "Xenova/whisper-tiny.en", // o ".es" si prefieres modelo español
-        {
-          quantized: true,
-        }
-      );
+    let cancelled = false;
 
-      setAsr(pipelineASR);
-      setReady(true);
-      console.log("🎉 Whisper listo");
+    async function load() {
+      try {
+        // Ajustes recomendables para RN
+        env.allowLocalModels = false;
+        env.useBrowserCache = true;
+
+        // Modelo pequeñito -> arranque más rápido
+        const asr = await pipeline(
+          "automatic-speech-recognition",
+          "Xenova/whisper-tiny"
+        );
+
+        if (cancelled) return;
+
+        pipelineRef.current = asr;
+        setReady(true);
+        console.log("✅ Whisper tiny cargado");
+      } catch (err) {
+        console.error("❌ Error cargando Whisper:", err);
+      }
     }
 
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function transcribe(audio: Float32Array) {
-    if (!asr) return "";
+  const transcribe = useCallback<TranscribeFn>(
+    async (audio, sampleRate, opts) => {
+      if (!pipelineRef.current) {
+        throw new Error("Whisper aún no está listo");
+      }
 
-    const result = await asr(audio, {
-      chunk_length_s: 30,
-    });
+      const lang = opts?.language ?? "es";
 
-    // result.text contiene toda la transcripción
-    return result.text.trim();
-  }
+      const result: any = await pipelineRef.current(audio, {
+        sampling_rate: sampleRate,
+        language: lang,
+        return_timestamps: false,
+        chunk_length_s: 25,
+      });
+
+      return (result?.text ?? "").toString();
+    },
+    []
+  );
 
   return (
-    <WhisperCtx.Provider value={{ transcribe, ready }}>
+    <WhisperCtx.Provider value={{ ready, transcribe }}>
       {children}
     </WhisperCtx.Provider>
   );

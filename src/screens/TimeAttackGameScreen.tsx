@@ -3,18 +3,24 @@ import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
 import { HelpSectionId } from "./HelpScreen";
+import type { OperationType } from "@/core/types/operation";
+import type { GameLanguage } from "@/core/types/game";
 
-const ROUND_SECONDS = 60;
+const ROUND_SECONDS = 100;
 
 interface TimeAttackGameScreenProps {
   onExit: () => void;
   difficulty?: number;
+  operationTypes: OperationType[];
+  language: GameLanguage;
   onOpenHelp: (section?: HelpSectionId) => void;
 }
 
 export default function TimeAttackGameScreen({
   onExit,
   difficulty = 1,
+  operationTypes,
+  language,
   onOpenHelp,
 }: TimeAttackGameScreenProps) {
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
@@ -49,9 +55,10 @@ export default function TimeAttackGameScreen({
     startListening,
     stopListening,
   } = useGameCore({
-    mode: "timeattack",
     difficulty,
     duration: ROUND_SECONDS,
+    operationTypes,
+    language,
     onFinish: handleFinish,
   });
 

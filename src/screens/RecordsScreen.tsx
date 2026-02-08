@@ -26,15 +26,23 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
 
     const parsed: GroupedRecords[] = Object.entries(data)
       .map(([key, records]: any) => {
-        const freeMatch = key.match(/^free_d(\d+)_t(\d+)/);
-        const timeMatch = key.match(/^timeattack_d(\d+)/);
+        const freeMatchWithTime = key.match(/^free_d(\d+)_t(\d+)$/);
+        const freeMatch = key.match(/^free_d(\d+)$/);
+        const timeMatch = key.match(/^timeattack_d(\d+)$/);
 
-        if (freeMatch) {
+        if (freeMatchWithTime) {
+          return {
+            key,
+            mode: "free",
+            difficulty: parseInt(freeMatchWithTime[1]),
+            duration: parseInt(freeMatchWithTime[2]),
+            records,
+          };
+        } else if (freeMatch) {
           return {
             key,
             mode: "free",
             difficulty: parseInt(freeMatch[1]),
-            duration: parseInt(freeMatch[2]),
             records,
           };
         } else if (timeMatch) {
@@ -103,11 +111,15 @@ export default function RecordsScreen({ onBack }: { onBack: () => void }) {
                 }}
               >
                 <Text style={{ fontSize: 20, fontWeight: "700", color: "#333" }}>
-                  {g.mode === "free" ? "🆓 Modo libre" : "⏱️ Contrarreloj"}
+                  {g.mode === "free" ? "🆓 Modo libre" : "🛡️ Supervivencia"}
                 </Text>
                 <Text style={{ color: "#777", fontSize: 16 }}>
                   Dificultad {g.difficulty}
-                  {g.mode === "free" ? ` · ${g.duration}s` : ""}
+                  {g.mode === "free"
+                    ? g.duration
+                      ? ` · ${g.duration}s`
+                      : " · sin tiempo"
+                    : ""}
                 </Text>
               </View>
 

@@ -3,18 +3,22 @@ import { useGameCore, type GameSummary } from "../hooks/useGameCore";
 import { getModeKey, saveRecord, ScoreRecord } from "../core/logic/recordsStorage";
 import GameScreenLayout from "./GameScreenLayout";
 import { HelpSectionId } from "./HelpScreen";
+import type { OperationType } from "@/core/types/operation";
+import type { GameLanguage } from "@/core/types/game";
 
 interface FreeModeGameScreenProps {
   onExit: () => void;
   difficulty?: number;
-  duration?: number; // segundos
+  operationTypes: OperationType[];
+  language: GameLanguage;
   onOpenHelp: (section?: HelpSectionId) => void;
 }
 
 export default function FreeModeGameScreen({
   onExit,
   difficulty = 1,
-  duration = 60,
+  operationTypes,
+  language,
   onOpenHelp,
 }: FreeModeGameScreenProps) {
   const [topRecords, setTopRecords] = useState<ScoreRecord[]>([]);
@@ -30,22 +34,22 @@ export default function FreeModeGameScreen({
     totalScore,
     results,
     phase,
-    timeLeft,
     listening,
     micState,
     startGame,
     resetGame,
     startListening,
     stopListening,
+    finishGame,
   } = useGameCore({
-    mode: "free",
     difficulty: currentDifficulty,
-    duration,
+    operationTypes,
+    language,
     onFinish: handleFinish,
   });
 
   function handleFinish({ correct, wrong, totalScore }: GameSummary) {
-    const modeKey = getModeKey("free", currentDifficulty, duration);
+    const modeKey = getModeKey("free", currentDifficulty);
     const record = { score: totalScore, correct, wrong };
 
     saveRecord(modeKey, record).then(({ top, isTop5 }) => {
@@ -82,7 +86,7 @@ export default function FreeModeGameScreen({
       listening={listening}
       correct={correct}
       wrong={wrong}
-      elapsed={`${timeLeft}s`}
+      elapsed="∞"
       totalScore={totalScore}
       results={results}
       topRecords={topRecords}
@@ -90,13 +94,13 @@ export default function FreeModeGameScreen({
       onStartGame={startGame}
       onReset={resetGame}
       onExit={onExit}
+      onFinishGame={finishGame}
       startListening={startListening}
       stopListening={stopListening}
       difficulty={currentDifficulty}
       onIncreaseLevel={increaseLevel}
       onDecreaseLevel={decreaseLevel}
-      titleSummary="⏹️ Fin de la ronda"
-      durationSeconds={duration}
+      titleSummary="⏹️ Fin de la sesión"
       onOpenHelp={onOpenHelp}
     />
   );

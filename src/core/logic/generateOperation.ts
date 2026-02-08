@@ -5,7 +5,7 @@ import { getLevelConfig } from "./levels";
 export function generateOperation(
   options: GenerateOperationOptions & { difficulty?: number } = {}
 ) {
-  const { difficulty, ...rest } = options;
+  const { difficulty, type: typeOverride, ...rest } = options;
 
   let levelConfig: GenerateOperationOptions | null = null;
   let selectedLevelConfigId: number | null = null;
@@ -17,18 +17,23 @@ export function generateOperation(
     levelConfig = getLevelConfig(selectedLevelConfigId).options;
   }
 
+  const mergedOptions = {
+    ...rest,
+    ...(levelConfig || {}),
+  };
+
   const {
-    type = ["sum", "sub"],
     range1 = [1, 20],
     range2 = [1, 20],
     overflowDigits = [0, 1],
     multipleOf1 = null,
     multipleOf2 = null,
     resultRange = [1, 20],
-  } = {
-    ...rest,
-    ...(levelConfig || {}),
-  };
+  } = mergedOptions;
+
+  const type =
+    (typeOverride && typeOverride.length > 0 ? typeOverride : mergedOptions.type) ??
+    ["sum", "sub"];
 
   const opType: OperationType = type[Math.floor(Math.random() * type.length)];
   const numDigits = (n: number) => Math.abs(n).toString().length;

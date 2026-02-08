@@ -1,15 +1,16 @@
 import { useRef } from "react";
-import { useWhisperCtx } from "./WhisperProvider";
+import { useWhisper } from "./WhisperProvider";
 import { parseNumberMultilang } from "../utils/parseNumberMultilang";
+import type { GameLanguage } from "@/core/types/game";
 
 export function useAutoTranscription({
   lang,
   onNumber,
 }: {
-  lang: "es" | "ca" | "en" | "fr";
+  lang: GameLanguage;
   onNumber: (n: number) => void;
 }) {
-  const { whisper } = useWhisperCtx();
+  const { transcribe, ready } = useWhisper();
   const pcmRef = useRef<Float32Array[]>([]);
   const lastProcess = useRef(0);
 
@@ -27,7 +28,7 @@ export function useAutoTranscription({
   }
 
   async function processAudio() {
-    if (!whisper) return;
+    if (!ready) return;
     if (pcmRef.current.length === 0) return;
 
     const pcm = concatFloat32Arrays(pcmRef.current);
@@ -35,16 +36,9 @@ export function useAutoTranscription({
 
     if (checkSilence(pcm)) return;
 
-    const { stop, promise } = whisper.transcribeData?.(pcm, 16000, {
-      language: lang,
-    }) ?? {};
-
-    if (!promise) return;
-
-    const { result } = await promise;
-    stop?.();
-
-    const text = (result?.text ?? "").trim().toLowerCase();
+    const text = (await transcribe(pcm, 16000, { language: lang }))
+      .trim()
+      .toLowerCase();
     if (!text) return;
 
     const n = parseNumberMultilang(text, lang);
